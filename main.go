@@ -137,11 +137,17 @@ func main() {
             }
             outputs[s] = zones
         case "TILE":
+            // Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
             sectionLength, _ := reader.ReadUint32()
-            length := int(sectionLength)
-            for i := 0; i < length / 0x404; i++ {
-                // Tile data
-                _, _ = reader.ReadUint32()
+            numTiles := int(sectionLength) / 0x404
+
+            // Hold the tile flags, for later reference
+            tileFlags := make([]string, numTiles)
+            
+            // Extract tile bits into images
+            for i := 0; i < numTiles; i++ {
+                flags, _ := reader.ReadUint32()
+                // Make a blank image
                 tile := image.NewNRGBA(image.Rect(0, 0, tileWidth, tileHeight))
                 for j := 0; j < 0x400; j++ {
                     pixelData, _ := reader.ReadByte()
@@ -162,22 +168,25 @@ func main() {
                 }
 
                 // Pad number with leading zeroes for filename
-                tilename := "assets/tiles/tile_" + fmt.Sprintf("%04d", i) + ".png"
+                tilename := "assets/tiles/tile_"+fmt.Sprintf("%04d",i)+".png"
+                
+                // Save bit flags, for later analysis
+                tileFlags[i] = fmt.Sprintf("%032b",flags)
 
+                // Save the tile
                 f, err := os.Create(tilename)
                 if err != nil {
                     log.Fatal(err)
                 }
-
                 if err := png.Encode(f, tile); err != nil {
                     f.Close()
                     log.Fatal(err)
                 }
-
                 if err := f.Close(); err != nil {
                     log.Fatal(err)
                 }
             }
+            outputs[s] = tileFlags
         case "ENDF":
             // Read whatever odd bytes are left?
             _, err = reader.ReadAll()
@@ -191,5 +200,5 @@ func main() {
     }
 
     // output
-    spew.Dump(outputs)
+    spew.Dump(outputs["TILE"])
 }

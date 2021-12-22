@@ -1,4 +1,4 @@
-module github.com/MasterShizzle/timwizard
+module github.com/MasterShizzle/goda-stories
 
 go 1.16
 
