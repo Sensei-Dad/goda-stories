@@ -6,10 +6,9 @@ import (
     "os"
     "io"
     "encoding/binary"
-    "image"
-    "image/color"
-    "image/png"
     
+    "github.com/hajimehoshi/ebiten/v2"
+    "github.com/hajimehoshi/ebiten/v2/ebitenutil"
     "github.com/davecgh/go-spew/spew"
     "github.com/ghostiam/binstruct"
 )
@@ -116,10 +115,10 @@ func main() {
             major, _ := reader.ReadUint16()
             minor, _ := reader.ReadUint16()
             outputs[s] = string(major) + "." + string(minor)
-        case "STUP","SNDS","PUZ2","CHAR","CHWP","CAUX","TNAM":
+        case "STUP","SNDS","PUZ2","CHAR","CHWP","CAUX","TNAM","TILE":
             sectionLength, _ := reader.ReadUint32()
             _, sectionData, err := reader.ReadBytes(int(sectionLength))
-            outputs[s] = sectionData
+            // outputs[s] = sectionData
 
             if err != nil {
                 fmt.Printf("Error reading section %s\n", section)
@@ -127,16 +126,19 @@ func main() {
             }
         case "ZONE":
             zoneCount, _ := reader.ReadUint16()
-            zones := make([][]byte, int(zoneCount))
+            zones := make([]*ZoneInfo, int(zoneCount))
             for i := 0; i < int(zoneCount); i++ {
                 // dunno what this does
                 _, _ = reader.ReadUint16()
+                
                 zoneLength, _ := reader.ReadUint32()
+                
                 _, zoneData, _ := reader.ReadBytes(int(zoneLength))
-                zones[i] = zoneData
+
+                zones[i] = processZone(zoneData)
             }
             outputs[s] = zones
-        case "TILE":
+        case "TILE_NOT_USED":
             // Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
             sectionLength, _ := reader.ReadUint32()
             numTiles := int(sectionLength) / 0x404
@@ -200,5 +202,58 @@ func main() {
     }
 
     // output
-    spew.Dump(outputs["TILE"])
+    spew.Dump(outputs["ZONE"])
+}
+
+type ZoneInfo struct {
+    Id int
+    Type string
+    Width int
+    Height int
+    Layers struct {
+        Terrain []int
+        Objects []int
+        Overlay []int
+    }
+}
+
+func processZone(zData []byte) *ZoneInfo {
+    z := new(ZoneInfo)
+    // Sanity check
+    zoneHeader := string(zData[2:6])
+
+    z.Id = int(binary.LittleEndian.Uint16(zData[0:]))
+    if zoneHeader != "IZON" {
+        log.Fatal(fmt.Sprintf("IZON header not found: cannot parse zoneData for zoneId %s", string(z.Id)))
+    }
+
+    // Populate a ZoneInfo for this map
+    z.Width = int(binary.LittleEndian.Uint16(zData[10:]))
+    z.Height = int(binary.LittleEndian.Uint16(zData[12:]))
+    p := int(zData[20])
+    fmt.Printf("pType is: %d\n", p)
+    switch p {
+    case 1:
+        z.Type = "desert"
+    case 2:
+        z.Type = "snow"
+    case 3:
+        z.Type = "forest"
+    case 5:
+        z.Type = "swamp"
+    default:
+        z.Type = "UNKNOWN"
+    }
+
+    // Grab tiles starting at byte 23: each one has 3x two-byte ints, for 3 tiles / cell
+    z.Layers.Terrain = make([]int, z.Width * z.Height)
+    z.Layers.Objects = make([]int, z.Width * z.Height)
+    z.Layers.Overlay = make([]int, z.Width * z.Height)
+    for j := 0; j < (z.Width * z.Height); j++ {
+        z.Layers.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j + 22:]))
+        z.Layers.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j + 24:]))
+        z.Layers.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j + 26:]))
+    }
+
+    return z
 }
