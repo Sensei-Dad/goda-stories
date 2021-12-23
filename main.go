@@ -17,7 +17,6 @@ import (
 )
 
 const tileWidth, tileHeight = 32, 32
-const columnWrap = 75
 
 func main() {
 	filename := "YODESK.DTA"
@@ -169,9 +168,6 @@ func main() {
 				if err == nil {
 					skipped++
 					reader.ReadBytes(0x400)
-					if (i%columnWrap)+5 > columnWrap {
-						fmt.Printf("\n     ")
-					}
 					fmt.Printf(".")
 					continue
 				}
@@ -210,9 +206,6 @@ func main() {
 				if err := f.Close(); err != nil {
 					log.Fatal(err)
 				}
-				if (i%columnWrap)+5 > columnWrap {
-					fmt.Printf("\n     ")
-				}
 				fmt.Printf(".")
 			}
 			fmt.Printf("]\n    %d tiles extracted, %d skipped.\n", numTiles-skipped, skipped)
@@ -243,9 +236,6 @@ func main() {
 		_, err := os.Stat(mapName)
 		if err == nil {
 			skipped++
-			if (zData.Id+5)%columnWrap > columnWrap {
-				fmt.Printf("\n     ")
-			}
 			fmt.Printf(".")
 			continue
 		}
@@ -262,9 +252,6 @@ func main() {
 		}
 		if err := f.Close(); err != nil {
 			log.Fatal(err)
-		}
-		if (zData.Id+5)%columnWrap > columnWrap {
-			fmt.Printf("\n     ")
 		}
 		fmt.Printf("*")
 	}
@@ -332,7 +319,7 @@ func processZone(zData []byte) ZoneInfo {
 func assembleMap(zone ZoneInfo) *image.RGBA {
 	// Make a blank map and fill with black
 	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
-	draw.Draw(mapImage, mapImage.Bounds(), image.Transparent, image.Pt(0, 0), draw.Src)
+	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Over)
 
 	// Draw tiles
 	for i := 0; i < (zone.Width * zone.Height); i++ {
