@@ -22,6 +22,156 @@ func main() {
 	filename := "YODESK.DTA"
 	path := "data/" + filename
 
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	reader := binstruct.NewReader(file, binary.LittleEndian, false)
+
+	defer file.Close()
+	fmt.Printf("[%s] Opened file\n", filename)
+
+	outputs := make(map[string]interface{})
+
+	// Parse the different sections
+	for {
+		// Grab section header
+		_, section, err := reader.ReadBytes(4)
+		if err != nil {
+			if err != io.EOF {
+				log.Fatal(err)
+			}
+			fmt.Println("Done.")
+			break
+		}
+
+		fmt.Printf("[%s] Reading section: %s\n", filename, section)
+
+		switch s := string(section); s {
+		case "VERS":
+			major, _ := reader.ReadUint16()
+			minor, _ := reader.ReadUint16()
+			outputs[s] = fmt.Sprint(int(major)) + "." + fmt.Sprint(int(minor))
+		case "STUP", "SNDS", "PUZ2", "CHAR", "CHWP", "CAUX", "TNAM":
+			// Basically, just skip all these sections
+			sectionLength, _ := reader.ReadUint32()
+			_, _, err := reader.ReadBytes(int(sectionLength))
+			// _, sectionData, err := reader.ReadBytes(int(sectionLength))
+			// outputs[s] = sectionData
+
+			if err != nil {
+				fmt.Printf("Error reading section %s\n", section)
+				log.Fatal(err)
+			}
+		case "ZONE":
+			zoneCount, _ := reader.ReadUint16()
+			zones := make([]ZoneInfo, int(zoneCount))
+			for i := 0; i < int(zoneCount); i++ {
+				// dunno what this does
+				_, _ = reader.ReadUint16()
+
+				zoneLength, _ := reader.ReadUint32()
+
+				_, zoneData, _ := reader.ReadBytes(int(zoneLength))
+
+				zones[i] = processZoneData(zoneData)
+			}
+			outputs[s] = zones
+		case "TILE":
+			// TODO: check beforehand and skip this step if tiles are already there
+			// Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
+			sectionLength, _ := reader.ReadUint32()
+			numTiles := int(sectionLength) / 0x404
+
+			// Hold the tile data, for later reference
+			tiles := make([]string, numTiles)
+			skipped := 0
+
+			// Extract tile bits into images
+			for i := 0; i < numTiles; i++ {
+				// Pad number with leading zeroes for filename
+				tilename := "assets/tiles/tile_" + fmt.Sprintf("%04d", i) + ".png"
+				flags, _ := reader.ReadUint32()
+				tiles[i] = fmt.Sprintf("%032b", flags)
+
+				// Skip creating the tile if it's already done
+				_, err := os.Stat(tilename)
+				if err == nil {
+					skipped++
+					reader.ReadBytes(0x400)
+					fmt.Printf(".")
+					continue
+				} else {
+					_, tileBytes, _ := reader.ReadBytes(0x400)
+					err = saveByteSliceToPNG(tilename, tileBytes)
+					if err != nil {
+						log.Fatal(err)
+					}
+					fmt.Printf("*")
+				}
+			}
+			fmt.Printf("]\n    %d tiles extracted, %d skipped.\n", numTiles-skipped, skipped)
+			outputs[s] = tiles
+		case "ENDF":
+			// Read whatever odd bytes are left?
+			_, err = reader.ReadAll()
+			if err != nil {
+				log.Fatal(err)
+			}
+		default:
+			fmt.Printf("UNHANDLED CASE: %s\n", section)
+			log.Fatal("Unhandled case")
+		}
+	}
+
+	// output
+	fmt.Println("")
+	fmt.Printf("[%s] Processing maps... \n    [", filename)
+	numZones := len(outputs["ZONE"].([]ZoneInfo))
+	skipped := 0
+
+	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
+		// Save map image
+		mapName := "assets/maps/map_" + fmt.Sprintf("%03d", zId) + ".png"
+
+		// Skip creating the map if it's already done
+		_, err := os.Stat(mapName)
+		if err == nil {
+			skipped++
+			fmt.Printf(".")
+			continue
+		} else {
+			// Otherwise, stitch the map together and save it
+			err = saveMapToPNG(mapName, zData)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("*")
+		}
+	}
+	fmt.Printf("]\n    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
+}
+
+type ZoneInfo struct {
+	Id     int
+	Type   string
+	Width  int
+	Height int
+	Layers struct {
+		Terrain []int
+		Objects []int
+		Overlay []int
+	}
+}
+
+type MapTile struct {
+	File      string
+	Flags     string
+	ImageData *image.NRGBA
+}
+
+func saveByteSliceToPNG(tPath string, tData []byte) error {
+	// Palette data extracted from the de-compiled Yoda Stories binary
 	PaletteData := []byte{
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -89,194 +239,44 @@ func main() {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00,
 	}
 
-	file, err := os.Open(path)
+	// Make a blank image
+	tile := image.NewNRGBA(image.Rect(0, 0, tileWidth, tileHeight))
+
+	// Set pixels
+	for j := 0; j < len(tData); j++ {
+		pixel := int(tData[j])
+		if pixel == 0 {
+			tile.Set(j%tileWidth, j/tileHeight, color.Transparent)
+		} else {
+			rVal := PaletteData[pixel*4+2]
+			gVal := PaletteData[pixel*4+1]
+			bVal := PaletteData[pixel*4+0]
+			tile.Set(j%tileWidth, j/tileHeight, color.NRGBA{
+				R: rVal,
+				G: gVal,
+				B: bVal,
+				A: 255,
+			})
+		}
+	}
+
+	// Save tiles to .png
+	f, err := os.Create(tPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	reader := binstruct.NewReader(file, binary.LittleEndian, false)
-
-	defer file.Close()
-	fmt.Printf("[%s] Opened file\n", filename)
-
-	outputs := make(map[string]interface{})
-
-	// Parse the different sections
-	for {
-		// Grab section header
-		_, section, err := reader.ReadBytes(4)
-		if err != nil {
-			if err != io.EOF {
-				log.Fatal(err)
-			}
-			fmt.Println("Done.")
-			break
-		}
-
-		fmt.Printf("[%s] Reading section: %s\n", filename, section)
-
-		switch s := string(section); s {
-		case "VERS":
-			major, _ := reader.ReadUint16()
-			minor, _ := reader.ReadUint16()
-			outputs[s] = fmt.Sprint(int(major)) + "." + fmt.Sprint(int(minor))
-		case "STUP", "SNDS", "PUZ2", "CHAR", "CHWP", "CAUX", "TNAM":
-			// Basically, just skip all these sections
-			sectionLength, _ := reader.ReadUint32()
-			_, _, err := reader.ReadBytes(int(sectionLength))
-			// _, sectionData, err := reader.ReadBytes(int(sectionLength))
-			// outputs[s] = sectionData
-
-			if err != nil {
-				fmt.Printf("Error reading section %s\n", section)
-				log.Fatal(err)
-			}
-		case "ZONE":
-			zoneCount, _ := reader.ReadUint16()
-			zones := make([]ZoneInfo, int(zoneCount))
-			for i := 0; i < int(zoneCount); i++ {
-				// dunno what this does
-				_, _ = reader.ReadUint16()
-
-				zoneLength, _ := reader.ReadUint32()
-
-				_, zoneData, _ := reader.ReadBytes(int(zoneLength))
-
-				zones[i] = processZone(zoneData)
-			}
-			outputs[s] = zones
-		case "TILE":
-			// TODO: check beforehand and skip this step if tiles are already there
-			// Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
-			sectionLength, _ := reader.ReadUint32()
-			numTiles := int(sectionLength) / 0x404
-
-			// Hold the tile data, for later reference
-			tiles := make([]string, numTiles)
-			skipped := 0
-
-			fmt.Printf("[%s] Importing tiles... \n    [", filename)
-
-			// Extract tile bits into images
-			for i := 0; i < numTiles; i++ {
-				// Pad number with leading zeroes for filename
-				tilename := "assets/tiles/tile_" + fmt.Sprintf("%04d", i) + ".png"
-				flags, _ := reader.ReadUint32()
-				tiles[i] = fmt.Sprintf("%032b", flags)
-
-				// Skip creating the tile if it's already done
-				_, err := os.Stat(tilename)
-				if err == nil {
-					skipped++
-					reader.ReadBytes(0x400)
-					fmt.Printf(".")
-					continue
-				}
-
-				// Make a blank image
-				tile := image.NewNRGBA(image.Rect(0, 0, tileWidth, tileHeight))
-
-				// Set pixels
-				for j := 0; j < 0x400; j++ {
-					pixelData, _ := reader.ReadByte()
-					pixel := int(pixelData)
-					if pixel == 0 {
-						tile.Set(j%tileWidth, j/tileHeight, color.Transparent)
-					} else {
-						rVal := PaletteData[pixel*4+2]
-						gVal := PaletteData[pixel*4+1]
-						bVal := PaletteData[pixel*4+0]
-						tile.Set(j%tileWidth, j/tileHeight, color.NRGBA{
-							R: rVal,
-							G: gVal,
-							B: bVal,
-							A: 255,
-						})
-					}
-				}
-
-				// Save tiles to .png
-				f, err := os.Create(tilename)
-				if err != nil {
-					log.Fatal(err)
-				}
-				if err := png.Encode(f, tile); err != nil {
-					f.Close()
-					log.Fatal(err)
-				}
-				if err := f.Close(); err != nil {
-					log.Fatal(err)
-				}
-				fmt.Printf(".")
-			}
-			fmt.Printf("]\n    %d tiles extracted, %d skipped.\n", numTiles-skipped, skipped)
-			outputs[s] = tiles
-		case "ENDF":
-			// Read whatever odd bytes are left?
-			_, err = reader.ReadAll()
-			if err != nil {
-				log.Fatal(err)
-			}
-		default:
-			fmt.Printf("UNHANDLED CASE: %s\n", section)
-			log.Fatal("Unhandled case")
-		}
+	if err := png.Encode(f, tile); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
 	}
 
-	// output
-	fmt.Println("")
-	fmt.Printf("[%s] Processing maps... \n    [", filename)
-	numZones := len(outputs["ZONE"].([]ZoneInfo))
-	skipped := 0
-
-	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
-		// Save map image
-		mapName := "assets/maps/map_" + fmt.Sprintf("%03d", zId) + ".png"
-
-		// Skip creating the map if it's already done
-		_, err := os.Stat(mapName)
-		if err == nil {
-			skipped++
-			fmt.Printf(".")
-			continue
-		}
-
-		// Otherwise, stitch the map together and save it
-		newMap := assembleMap(zData)
-		f, err := os.Create(mapName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := png.Encode(f, newMap); err != nil {
-			f.Close()
-			log.Fatal(err)
-		}
-		if err := f.Close(); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("*")
-	}
-	fmt.Printf("]\n    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
+	return nil
 }
 
-type ZoneInfo struct {
-	Id     int
-	Type   string
-	Width  int
-	Height int
-	Layers struct {
-		Terrain []int
-		Objects []int
-		Overlay []int
-	}
-}
-
-type MapTile struct {
-	File      string
-	Flags     string
-	ImageData *image.NRGBA
-}
-
-func processZone(zData []byte) ZoneInfo {
+func processZoneData(zData []byte) ZoneInfo {
 	z := new(ZoneInfo)
 	// Sanity check
 	zoneHeader := string(zData[2:6])
@@ -316,10 +316,10 @@ func processZone(zData []byte) ZoneInfo {
 	return *z
 }
 
-func assembleMap(zone ZoneInfo) *image.RGBA {
+func saveMapToPNG(mapPath string, zone ZoneInfo) error {
 	// Make a blank map and fill with black
 	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
-	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Over)
+	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Src)
 
 	// Draw tiles
 	for i := 0; i < (zone.Width * zone.Height); i++ {
@@ -354,11 +354,22 @@ func assembleMap(zone ZoneInfo) *image.RGBA {
 		}
 	}
 
-	return mapImage
+	f, err := os.Create(mapPath)
+	if err != nil {
+		return err
+	}
+	if err := png.Encode(f, mapImage); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getTileByNumber(tileNum int) (image.Image, error) {
-	// Get the tile from its .png source, by number
+	// Get the tile from its .png image source, by number
 	blankTile := image.NewRGBA(image.Rect(0, 0, tileWidth, tileHeight))
 	draw.Draw(blankTile, image.Rect(0, 0, tileWidth, tileHeight), image.Transparent, image.Pt(0, 0), draw.Src)
 	filePath := "assets/tiles/tile_" + fmt.Sprintf("%04d", tileNum) + ".png"
