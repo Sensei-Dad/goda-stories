@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	// "github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ghostiam/binstruct"
 	// "github.com/hajimehoshi/ebiten/v2"
 )
@@ -125,19 +125,27 @@ func main() {
 	}
 
 	// output
-	fmt.Println("")
+	fmt.Printf("\n")
 	fmt.Printf("[%s] Processing maps... \n    [", filename)
 	numZones := len(outputs["ZONE"].([]ZoneInfo))
 	skipped := 0
 
-	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
-		// Save map image
-		mapName := "assets/maps/map_" + fmt.Sprintf("%03d", zId) + ".png"
+	mapInfo, err := os.Create("assets/maps/mapInfo.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		// Skip creating the map if it's already done
+	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
+		// Save map image and zone data
+		mapName := "assets/maps/map_" + fmt.Sprintf("%03d", zId) + ".png"
 		_, err := os.Stat(mapName)
 		if err == nil {
+			// Skip creating the map if it's already done
 			skipped++
+			// Delete map layers, so output is cleaner
+			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Terrain = nil
+			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Objects = nil
+			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Overlay = nil
 			fmt.Printf(".")
 			continue
 		} else {
@@ -149,7 +157,10 @@ func main() {
 			fmt.Printf("*")
 		}
 	}
-	fmt.Printf("]\n    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
+	fmt.Println("]")
+	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
+
+	spew.Fdump(mapInfo, outputs["ZONE"])
 }
 
 type ZoneInfo struct {
@@ -157,17 +168,175 @@ type ZoneInfo struct {
 	Type   string
 	Width  int
 	Height int
+	Flags  string
 	Layers struct {
 		Terrain []int
 		Objects []int
 		Overlay []int
 	}
+	ObjectTriggers []ObjectTrigger
+}
+
+type ObjectTrigger struct {
+	Type string
+	X    int
+	Y    int
+	Arg  int
 }
 
 type MapTile struct {
 	File      string
 	Flags     string
 	ImageData *image.NRGBA
+}
+
+func processZoneData(zData []byte) ZoneInfo {
+	z := new(ZoneInfo)
+
+	// Sanity check
+	zoneHeader := string(zData[2:6])
+	z.Id = int(binary.LittleEndian.Uint16(zData[0:]))
+	if zoneHeader != "IZON" {
+		log.Fatal(fmt.Sprintf("IZON header not found: cannot parse zoneData for zoneId %s", fmt.Sprint(z.Id)))
+	}
+
+	fmt.Printf("    Processing map_%03d: ", z.Id)
+
+	// Populate a ZoneInfo for this map
+	z.Width = int(binary.LittleEndian.Uint16(zData[10:]))
+	z.Height = int(binary.LittleEndian.Uint16(zData[12:]))
+	z.Flags = fmt.Sprintf("%08b", zData[14])
+
+	p := int(zData[20])
+	switch p {
+	case 1:
+		z.Type = "desert"
+	case 2:
+		z.Type = "snow"
+	case 3:
+		z.Type = "forest"
+	case 5:
+		z.Type = "swamp"
+	default:
+		z.Type = "UNKNOWN"
+	}
+
+	// Grab tiles starting at byte 22: each one has 3x two-byte ints, for 3 tiles / cell
+	z.Layers.Terrain = make([]int, z.Width*z.Height)
+	z.Layers.Objects = make([]int, z.Width*z.Height)
+	z.Layers.Overlay = make([]int, z.Width*z.Height)
+	for j := 0; j < (z.Width * z.Height); j++ {
+		z.Layers.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j+22:]))
+		z.Layers.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
+		z.Layers.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j+26:]))
+	}
+
+	// Parse entries for object info
+	triggerTypes := []string{
+		"trigger_location",
+		"spawn_location",
+		"force_location",
+		"vehicle_to_secondary_map",
+		"vehicle_to_primary_map",
+		"object_gives_locator",
+		"crate_with_item",
+		"puzzle_NPC",
+		"crate_with_weapon",
+		"map_entrance",
+		"map_exit",
+		"unused",
+		"lock",
+		"teleporter",
+		"xwing_from_dagobah",
+		"xwing_to_dagobah",
+		"UNKNOWN",
+	}
+	objInfoAddress := (6 * z.Width * z.Height) + 22
+	numTriggers := int(binary.LittleEndian.Uint16(zData[objInfoAddress:]))
+	fmt.Printf(" Processing %d triggers", numTriggers)
+	if numTriggers > 0 {
+		z.ObjectTriggers = make([]ObjectTrigger, numTriggers)
+		for k := 0; k < numTriggers; k++ {
+			fmt.Printf(".")
+			offset := objInfoAddress + (12 * k)
+			z.ObjectTriggers[k].Type = triggerTypes[int(binary.LittleEndian.Uint16(zData[offset+2:]))]
+			z.ObjectTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
+			z.ObjectTriggers[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
+			z.ObjectTriggers[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
+		}
+	}
+	fmt.Println()
+
+	return *z
+}
+
+func saveMapToPNG(mapPath string, zone ZoneInfo) error {
+	// Make a blank map and fill with black
+	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
+	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Src)
+
+	// Draw tiles
+	for i := 0; i < (zone.Width * zone.Height); i++ {
+		terrainTile, err := getTileByNumber(zone.Layers.Terrain[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		objectsTile, err := getTileByNumber(zone.Layers.Objects[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		overlayTile, err := getTileByNumber(zone.Layers.Overlay[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		x := (i % zone.Width) * tileWidth
+		y := (i / zone.Height) * tileHeight
+
+		offset := image.Pt(x, y)
+
+		if terrainTile != nil {
+			draw.Draw(mapImage, mapImage.Bounds().Add(offset), terrainTile, image.Pt(0, 0), draw.Src)
+		}
+		if objectsTile != nil {
+			draw.Draw(mapImage, mapImage.Bounds().Add(offset), objectsTile, image.Pt(0, 0), draw.Over)
+		}
+		if overlayTile != nil {
+			draw.Draw(mapImage, mapImage.Bounds().Add(offset), overlayTile, image.Pt(0, 0), draw.Over)
+		}
+	}
+
+	f, err := os.Create(mapPath)
+	if err != nil {
+		return err
+	}
+	if err := png.Encode(f, mapImage); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func getTileByNumber(tileNum int) (image.Image, error) {
+	// Get the tile from its .png image source, by number
+	blankTile := image.NewRGBA(image.Rect(0, 0, tileWidth, tileHeight))
+	draw.Draw(blankTile, image.Rect(0, 0, tileWidth, tileHeight), image.Transparent, image.Pt(0, 0), draw.Src)
+	filePath := "assets/tiles/tile_" + fmt.Sprintf("%04d", tileNum) + ".png"
+	if tileNum == 65535 { // return a transparent tile
+		return blankTile, nil
+	}
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	image, _, err := image.Decode(f)
+	return image, err
 }
 
 func saveByteSliceToPNG(tPath string, tData []byte) error {
@@ -274,113 +443,4 @@ func saveByteSliceToPNG(tPath string, tData []byte) error {
 	}
 
 	return nil
-}
-
-func processZoneData(zData []byte) ZoneInfo {
-	z := new(ZoneInfo)
-	// Sanity check
-	zoneHeader := string(zData[2:6])
-
-	z.Id = int(binary.LittleEndian.Uint16(zData[0:]))
-	if zoneHeader != "IZON" {
-		log.Fatal(fmt.Sprintf("IZON header not found: cannot parse zoneData for zoneId %s", fmt.Sprint(z.Id)))
-	}
-
-	// Populate a ZoneInfo for this map
-	z.Width = int(binary.LittleEndian.Uint16(zData[10:]))
-	z.Height = int(binary.LittleEndian.Uint16(zData[12:]))
-	p := int(zData[20])
-	switch p {
-	case 1:
-		z.Type = "desert"
-	case 2:
-		z.Type = "snow"
-	case 3:
-		z.Type = "forest"
-	case 5:
-		z.Type = "swamp"
-	default:
-		z.Type = "UNKNOWN"
-	}
-
-	// Grab tiles starting at byte 22: each one has 3x two-byte ints, for 3 tiles / cell
-	z.Layers.Terrain = make([]int, z.Width*z.Height)
-	z.Layers.Objects = make([]int, z.Width*z.Height)
-	z.Layers.Overlay = make([]int, z.Width*z.Height)
-	for j := 0; j < (z.Width * z.Height); j++ {
-		z.Layers.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j+22:]))
-		z.Layers.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
-		z.Layers.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j+26:]))
-	}
-
-	return *z
-}
-
-func saveMapToPNG(mapPath string, zone ZoneInfo) error {
-	// Make a blank map and fill with black
-	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
-	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Src)
-
-	// Draw tiles
-	for i := 0; i < (zone.Width * zone.Height); i++ {
-		terrainTile, err := getTileByNumber(zone.Layers.Terrain[i])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		objectsTile, err := getTileByNumber(zone.Layers.Objects[i])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		overlayTile, err := getTileByNumber(zone.Layers.Overlay[i])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		x := (i % zone.Width) * tileWidth
-		y := (i / zone.Height) * tileHeight
-
-		offset := image.Pt(x, y)
-
-		if terrainTile != nil {
-			draw.Draw(mapImage, mapImage.Bounds().Add(offset), terrainTile, image.Pt(0, 0), draw.Src)
-		}
-		if objectsTile != nil {
-			draw.Draw(mapImage, mapImage.Bounds().Add(offset), objectsTile, image.Pt(0, 0), draw.Over)
-		}
-		if overlayTile != nil {
-			draw.Draw(mapImage, mapImage.Bounds().Add(offset), overlayTile, image.Pt(0, 0), draw.Over)
-		}
-	}
-
-	f, err := os.Create(mapPath)
-	if err != nil {
-		return err
-	}
-	if err := png.Encode(f, mapImage); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func getTileByNumber(tileNum int) (image.Image, error) {
-	// Get the tile from its .png image source, by number
-	blankTile := image.NewRGBA(image.Rect(0, 0, tileWidth, tileHeight))
-	draw.Draw(blankTile, image.Rect(0, 0, tileWidth, tileHeight), image.Transparent, image.Pt(0, 0), draw.Src)
-	filePath := "assets/tiles/tile_" + fmt.Sprintf("%04d", tileNum) + ".png"
-	if tileNum == 65535 { // return a transparent tile
-		return blankTile, nil
-	}
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	image, _, err := image.Decode(f)
-	return image, err
 }

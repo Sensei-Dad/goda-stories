@@ -10,14 +10,12 @@ To get started, simply copy the YODESK.DTA file from your Yoda Stories installat
 ### TILE
 On run, will output tile data and export pngs to `assets/tiles`.
 
-> TODO: Should create the tiles dir if it doesn't exist
-
-> TODO: Need to check dir and skip this step if tiles already extracted, or move this to a 'setup' func
+> TODO: Create the tiles dir if it doesn't exist
 
 ### ZONE
 
-#### Section layout
-
+Section layout:
+```
 0:2 	2 B: ID
 2:6 	4 B: "IZON"
 6:10	4 B: (unknown)
@@ -31,7 +29,7 @@ On run, will output tile data and export pngs to `assets/tiles`.
 			0x03 = forest
 			0x05 = swamp
 21		1 B: unused (same values for every map)
-22:X	(W * H * 6) B: map data
+22:X	(W * H) * 6 B: map data
 			Each "cell" in the map has 3 tiles, each denoted by a Uint16
 			Tile values correspond to the tile number
 		2 B: object info entry count (X)
@@ -54,3 +52,5 @@ On run, will output tile data and export pngs to `assets/tiles`.
 		4 B: "IACT"
 		4 B: length (X)
 		X B: action data
+```
+
