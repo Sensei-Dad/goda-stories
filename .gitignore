@@ -1,5 +1,6 @@
 assets/tiles/*.png
 assets/maps/*.png
+assets/text/*.txt
 data/YODESK.DTA
 goda-stories
 out.txt

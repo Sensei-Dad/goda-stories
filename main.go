@@ -17,10 +17,13 @@ import (
 )
 
 const tileWidth, tileHeight = 32, 32
+const mapInfoFile = "assets/text/mapInfo.txt"
+const tileInfoFile = "assets/text/tileInfo.txt"
 
 func main() {
 	filename := "YODESK.DTA"
 	path := "data/" + filename
+	tileFlags := []TileInfo{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -74,17 +77,15 @@ func main() {
 
 				_, zoneData, _ := reader.ReadBytes(int(zoneLength))
 
-				zones[i] = processZoneData(zoneData)
+				zones[i] = processZoneData(zoneData, tileFlags)
 			}
 			outputs[s] = zones
 		case "TILE":
-			// TODO: check beforehand and skip this step if tiles are already there
 			// Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
 			sectionLength, _ := reader.ReadUint32()
 			numTiles := int(sectionLength) / 0x404
+			tileFlags = make([]TileInfo, numTiles)
 
-			// Hold the tile data, for later reference
-			tiles := make([]string, numTiles)
 			skipped := 0
 
 			// Extract tile bits into images
@@ -92,7 +93,9 @@ func main() {
 				// Pad number with leading zeroes for filename
 				tilename := "assets/tiles/tile_" + fmt.Sprintf("%04d", i) + ".png"
 				flags, _ := reader.ReadUint32()
-				tiles[i] = fmt.Sprintf("%032b", flags)
+				tileFlags[i] = TileInfo{}
+				tileFlags[i].Id = fmt.Sprintf("%04d", i)
+				tileFlags[i].Flags = fmt.Sprintf("%032b", flags)
 
 				// Skip creating the tile if it's already done
 				_, err := os.Stat(tilename)
@@ -111,7 +114,6 @@ func main() {
 				}
 			}
 			fmt.Printf("]\n    %d tiles extracted, %d skipped.\n", numTiles-skipped, skipped)
-			outputs[s] = tiles
 		case "ENDF":
 			// Read whatever odd bytes are left?
 			_, err = reader.ReadAll()
@@ -124,13 +126,17 @@ func main() {
 		}
 	}
 
-	// output
+	// output map info to file
 	fmt.Printf("\n")
-	fmt.Printf("[%s] Processing maps... \n    [", filename)
+	fmt.Printf("[%s] Stitching maps... \n    [", filename)
 	numZones := len(outputs["ZONE"].([]ZoneInfo))
 	skipped := 0
 
-	mapInfo, err := os.Create("assets/maps/mapInfo.txt")
+	mapInfo, err := os.Create(mapInfoFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tileInfo, err := os.Create(tileInfoFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -142,12 +148,7 @@ func main() {
 		if err == nil {
 			// Skip creating the map if it's already done
 			skipped++
-			// Delete map layers, so output is cleaner
-			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Terrain = nil
-			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Objects = nil
-			outputs["ZONE"].([]ZoneInfo)[zId].Layers.Overlay = nil
 			fmt.Printf(".")
-			continue
 		} else {
 			// Otherwise, stitch the map together and save it
 			err = saveMapToPNG(mapName, zData)
@@ -156,11 +157,20 @@ func main() {
 			}
 			fmt.Printf("*")
 		}
+
+		// Prune the map layers, so the output is cleaner
+		outputs["ZONE"].([]ZoneInfo)[zId].Layers.Terrain = nil
+		outputs["ZONE"].([]ZoneInfo)[zId].Layers.Objects = nil
+		outputs["ZONE"].([]ZoneInfo)[zId].Layers.Overlay = nil
 	}
 	fmt.Println("]")
 	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
 
+	fmt.Printf("Dumping output to %s...\n", mapInfoFile)
 	spew.Fdump(mapInfo, outputs["ZONE"])
+
+	fmt.Printf("Dumping output to %s...\n", tileInfoFile)
+	spew.Fdump(tileInfo, tileFlags)
 }
 
 type ZoneInfo struct {
@@ -177,20 +187,31 @@ type ZoneInfo struct {
 	ObjectTriggers []ObjectTrigger
 }
 
+type TileInfo struct {
+	Id          string
+	Flags       string
+	IsObject    bool
+	IsTerrain   bool
+	IsColliding bool
+	CanPush     bool
+	IsOverlay   bool
+	IsMiniMap   bool
+	IsWeapon    bool
+	IsItem      bool
+	IsCharacter bool
+}
+
 type ObjectTrigger struct {
-	Type string
-	X    int
-	Y    int
-	Arg  int
+	Type        string
+	X           int
+	Y           int
+	Arg         int
+	TerrainInfo TileInfo
+	ObjectInfo  TileInfo
+	OverlayInfo TileInfo
 }
 
-type MapTile struct {
-	File      string
-	Flags     string
-	ImageData *image.NRGBA
-}
-
-func processZoneData(zData []byte) ZoneInfo {
+func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 	z := new(ZoneInfo)
 
 	// Sanity check
@@ -263,6 +284,18 @@ func processZoneData(zData []byte) ZoneInfo {
 			z.ObjectTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
 			z.ObjectTriggers[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
 			z.ObjectTriggers[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
+			tnum := z.Layers.Terrain[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
+			if tnum != 65535 {
+				z.ObjectTriggers[k].TerrainInfo = tiles[tnum]
+			}
+			tnum = z.Layers.Objects[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
+			if tnum != 65535 {
+				z.ObjectTriggers[k].ObjectInfo = tiles[tnum]
+			}
+			tnum = z.Layers.Overlay[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
+			if tnum != 65535 {
+				z.ObjectTriggers[k].OverlayInfo = tiles[tnum]
+			}
 		}
 	}
 	fmt.Println()
@@ -273,7 +306,7 @@ func processZoneData(zData []byte) ZoneInfo {
 func saveMapToPNG(mapPath string, zone ZoneInfo) error {
 	// Make a blank map and fill with black
 	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
-	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Pt(0, 0), draw.Src)
+	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Black.Bounds().Max, draw.Src)
 
 	// Draw tiles
 	for i := 0; i < (zone.Width * zone.Height); i++ {
