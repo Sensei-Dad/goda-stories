@@ -8,6 +8,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+type MapScreen struct {
+	Layers MapLayers
+}
+
 type MapTile struct {
 	PixelX     int
 	PixelY     int
@@ -16,13 +20,23 @@ type MapTile struct {
 }
 
 type MapLayers struct {
+	Width   int
+	Height  int
 	Terrain []MapTile
 	Objects []MapTile
 	Overlay []MapTile
 }
 
-func loadAllTiles(tiles []TileInfo) []*ebiten.Image {
-	// return one big-ass slice of all tile images in the game
+func NewMapScreen(mapNum int) MapScreen {
+	ms := MapScreen{}
+	l := ms.LoadMap(mapNum)
+	ms.Layers = l
+	return ms
+}
+
+func LoadAllTiles(tiles []TileInfo) []*ebiten.Image {
+	// return one big-ass slice of all tile images in the game,
+	// because Go and I are lazy like that
 	ret := make([]*ebiten.Image, len(tiles))
 	for x := 0; x < len(tiles); x++ {
 		tFile := fmt.Sprintf("assets/tiles/tile_%04d.png", x)
@@ -32,41 +46,52 @@ func loadAllTiles(tiles []TileInfo) []*ebiten.Image {
 		}
 
 		ret[x] = tImage
-		fmt.Printf("      Loaded %s...\n", tFile)
 	}
 	return ret
 }
 
-func (g *Game) LoadMap(zone int) (ret MapLayers) {
-	z := g.getZone(zone)
+func (ms *MapScreen) GetTile(tNum int) *ebiten.Image {
+	if tNum != 65535 {
+		return tiles[tNum]
+	} else {
+		// 65535 indicates a blank tile
+		return blankTile
+	}
+}
+
+func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
+	z := GetZone(zone)
 	ret.Terrain = make([]MapTile, len(z.LayerData.Terrain))
 	ret.Objects = make([]MapTile, len(z.LayerData.Objects))
 	ret.Overlay = make([]MapTile, len(z.LayerData.Overlay))
+	ret.Width = z.Width
+	ret.Height = z.Height
 
 	for y := 0; y < z.Height; y++ {
 		for x := 0; x < z.Width; x++ {
 			// Assemble the map from layer data
+			// TODO: account for entities (pushblocks, creatures, etc.)
 			tNum := (y * z.Width) + x
 			terNum := z.LayerData.Terrain[tNum]
 			ter := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
 				IsWalkable: true,
-				Image:      g.getTile(terNum),
+				Image:      ms.GetTile(terNum),
 			}
 			objNum := z.LayerData.Objects[tNum]
 			obj := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
 				IsWalkable: true,
-				Image:      g.getTile(objNum),
+				Image:      ms.GetTile(objNum),
 			}
 			ovrNum := z.LayerData.Overlay[tNum]
 			ovr := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
 				IsWalkable: true,
-				Image:      g.getTile(ovrNum),
+				Image:      ms.GetTile(ovrNum),
 			}
 
 			ret.Terrain[tNum] = ter
@@ -78,19 +103,7 @@ func (g *Game) LoadMap(zone int) (ret MapLayers) {
 	return
 }
 
-func (g *Game) getTile(tNum int) *ebiten.Image {
-	if tNum != 65535 {
-		return g.Tiles[tNum]
-	} else {
-		// return a blank tile
-		return ebiten.NewImage(tileWidth, tileHeight)
-	}
-}
-
-func (g *Game) getCurrentZone() (z ZoneInfo) {
-	return g.Zones[g.CurrentZone]
-}
-
-func (g *Game) getZone(zoneNum int) (z ZoneInfo) {
-	return g.Zones[zoneNum]
+func (l *MapLayers) GetTileNum(x, y int) int {
+	// Helper function: input tile coords, return tile index
+	return (y * l.Width) + x
 }

@@ -6,23 +6,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-const tileWidth, tileHeight = 32, 32 // Tile width and height, in pixels
-const viewWidth, viewHeight = 18, 18 // Viewport width and height, in tiles
-// const uiPadding = 5                  // Padding between UI elements, in pixels
-const tileInfoFile = "assets/text/tileInfo.txt"
-const mapInfoHtml = "assets/text/mapInfo.html"
+const yodaFile = "YODESK.DTA"
+
+var tileInfo = []TileInfo{}
+var zoneInfo = []ZoneInfo{}
 
 func main() {
-	// Process the input file
+	// Process the input file, grab tiles and maps
 	// TODO: some more tweaking to not repeat this step too many times
-	yodaFile := "YODESK.DTA"
-	tileInfo, zoneInfo := processYodaFile(yodaFile)
-	// _, _ = processYodaFile(yodaFile)
+	tileInfo, zoneInfo = processYodaFile(yodaFile)
 
-	// Init the game
+	// Init the game...
 	g := NewGame(tileInfo, zoneInfo)
 	ebiten.SetWindowResizable(true)
 	ebiten.SetWindowTitle("Goda Stories")
+
+	// ...and run it
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}

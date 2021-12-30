@@ -14,11 +14,12 @@ import (
 	"image/draw"
 	"image/png"
 
-	// "github.com/hajimehoshi/ebiten/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghostiam/binstruct"
 )
 
+const tileInfoFile = "assets/text/tileInfo.txt"
+const mapInfoHtml = "assets/text/mapInfo.html"
 const htmlStarter string = `<!DOCTYPE html>
 <html lang="en">
 
@@ -134,7 +135,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 			if err != io.EOF {
 				log.Fatal(err)
 			}
-			fmt.Println("Done.")
+			// fmt.Println("Done.")
 			break
 		}
 
@@ -188,7 +189,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 				if err == nil {
 					skipped++
 					reader.ReadBytes(0x400)
-					fmt.Printf(".")
+					// fmt.Printf(".")
 					continue
 				} else {
 					_, tileBytes, _ := reader.ReadBytes(0x400)
@@ -196,10 +197,10 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 					if err != nil {
 						log.Fatal(err)
 					}
-					fmt.Printf("*")
+					// fmt.Printf("*")
 				}
 			}
-			fmt.Printf("]\n    %d tiles extracted, %d skipped.\n", numTiles-skipped, skipped)
+			fmt.Printf("    %d tiles extracted, %d skipped\n", numTiles-skipped, skipped)
 		case "ENDF":
 			// Read whatever odd bytes are left?
 			_, err = reader.ReadAll()
@@ -223,8 +224,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 	}
 
 	// output map info to file
-	fmt.Printf("\n")
-	fmt.Printf("[%s] Stitching maps... \n    [", fileName)
+	fmt.Printf("[%s] Stitching maps...\n", fileName)
 	numZones := len(outputs["ZONE"].([]ZoneInfo))
 	skipped := 0
 
@@ -241,14 +241,14 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		if err == nil {
 			// Skip creating the map if it's already done
 			skipped++
-			fmt.Printf(".")
+			// fmt.Printf(".")
 		} else {
 			// Otherwise, stitch the map together and save it
 			err = saveMapToPNG(mapFilePath, zData)
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("*")
+			// fmt.Printf("*")
 		}
 
 		// Prune the map layers, so the output is cleaner
@@ -256,17 +256,17 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		// outputs["ZONE"].([]ZoneInfo)[zId].LayerData.Objects = nil
 		// outputs["ZONE"].([]ZoneInfo)[zId].LayerData.Overlay = nil
 	}
-	fmt.Println("]")
+	// fmt.Println("]")
 	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
 	mapsHtml += "\n</body>\n</html>\n"
 
-	fmt.Printf("Dumping output to %s...\n", tileInfoFile)
+	fmt.Printf("    Dumping output to %s...\n", tileInfoFile)
 	spew.Fdump(tileInfo, tileFlags)
 
-	fmt.Printf("Dumping output to %s...\n", mapInfoHtml)
+	fmt.Printf("    Dumping output to %s...\n", mapInfoHtml)
 	spew.Fprint(mapLayers, mapsHtml)
 
-	fmt.Printf("Processed [%s].\n", yodaFilePath)
+	fmt.Printf("[%s] Processed data file.\n", yodaFile)
 
 	return tileFlags, zones
 }
@@ -291,7 +291,7 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 		log.Fatal(fmt.Sprintf("IZON header not found: cannot parse zoneData for zoneId %s", fmt.Sprint(z.Id)))
 	}
 
-	fmt.Printf("    Processing map_%03d: ", z.Id)
+	// fmt.Printf("    Processing map_%03d: ", z.Id)
 
 	// Populate a ZoneInfo for this map
 	z.Width = int(binary.LittleEndian.Uint16(zData[10:]))
@@ -344,11 +344,11 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 	}
 	objInfoAddress := (6 * z.Width * z.Height) + 22
 	numTriggers := int(binary.LittleEndian.Uint16(zData[objInfoAddress:]))
-	fmt.Printf(" Processing %d triggers", numTriggers)
+	// fmt.Printf(" Processing %d triggers", numTriggers)
 	if numTriggers > 0 {
 		z.ObjectTriggers = make([]ObjectTrigger, numTriggers)
 		for k := 0; k < numTriggers; k++ {
-			fmt.Printf(".")
+			// fmt.Printf(".")
 			offset := objInfoAddress + (12 * k)
 			z.ObjectTriggers[k].Type = triggerTypes[int(binary.LittleEndian.Uint16(zData[offset+2:]))]
 			z.ObjectTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
