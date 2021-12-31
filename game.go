@@ -8,8 +8,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-const tileWidth, tileHeight = 32, 32         // Tile width and height, in pixels
-const ViewportWidth, ViewportHeight = 18, 18 // Viewport width and height, in tiles
+const tileWidth, tileHeight = 32, 32       // Tile width and height, in pixels
+const ViewportWidth, ViewportHeight = 9, 9 // Viewport width and height, in tiles
 // const uiPadding = 5                  // Padding between UI elements, in pixels
 
 type Game struct {
@@ -36,6 +36,7 @@ func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
 }
 
 func (g *Game) Update() error {
+	TryMovePlayer(g)
 	return nil
 }
 
@@ -46,6 +47,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// === Terrain ===
 	layers := g.World.GetLayers()
 	layers.DrawMap(screen)
+
+	ProcessRenderables(g, layers, screen)
 
 	// Show FPS
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))

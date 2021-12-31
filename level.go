@@ -15,6 +15,7 @@ type MapScreen struct {
 type MapTile struct {
 	PixelX     int
 	PixelY     int
+	Id         int
 	IsWalkable bool
 	Image      *ebiten.Image
 }
@@ -22,6 +23,7 @@ type MapTile struct {
 type MapLayers struct {
 	Width   int
 	Height  int
+	MapId   int
 	Terrain []MapTile
 	Objects []MapTile
 	Overlay []MapTile
@@ -50,7 +52,7 @@ func LoadAllTiles(tiles []TileInfo) []*ebiten.Image {
 	return ret
 }
 
-func (ms *MapScreen) GetTile(tNum int) *ebiten.Image {
+func (ms *MapScreen) GetTileImage(tNum int) *ebiten.Image {
 	if tNum != 65535 {
 		return tiles[tNum]
 	} else {
@@ -66,32 +68,37 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 	ret.Overlay = make([]MapTile, len(z.LayerData.Overlay))
 	ret.Width = z.Width
 	ret.Height = z.Height
+	ret.MapId = zone
 
 	for y := 0; y < z.Height; y++ {
 		for x := 0; x < z.Width; x++ {
 			// Assemble the map from layer data
 			// TODO: account for entities (pushblocks, creatures, etc.)
+			// TODO: probably lump the objImage, terImage, and ovrImage into the same MapTile struct
 			tNum := (y * z.Width) + x
 			terNum := z.LayerData.Terrain[tNum]
 			ter := MapTile{
+				Id:         terNum,
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: tileInfo[tNum].IsWalkable,
-				Image:      ms.GetTile(terNum),
+				IsWalkable: CheckIsWalkable(terNum),
+				Image:      ms.GetTileImage(terNum),
 			}
 			objNum := z.LayerData.Objects[tNum]
 			obj := MapTile{
+				Id:         objNum,
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: tileInfo[tNum].IsWalkable,
-				Image:      ms.GetTile(objNum),
+				IsWalkable: CheckIsWalkable(objNum),
+				Image:      ms.GetTileImage(objNum),
 			}
 			ovrNum := z.LayerData.Overlay[tNum]
 			ovr := MapTile{
+				Id:         ovrNum,
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: tileInfo[tNum].IsWalkable,
-				Image:      ms.GetTile(ovrNum),
+				IsWalkable: CheckIsWalkable(ovrNum),
+				Image:      ms.GetTileImage(ovrNum),
 			}
 
 			ret.Terrain[tNum] = ter
@@ -103,7 +110,7 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 	return
 }
 
-func (l *MapLayers) GetTileNum(x, y int) int {
+func (l *MapLayers) GetTileIndex(x, y int) int {
 	// Helper function: input tile coords, return tile index
 	return (y * l.Width) + x
 }
@@ -111,7 +118,7 @@ func (l *MapLayers) GetTileNum(x, y int) int {
 func (l *MapLayers) DrawMap(screen *ebiten.Image) {
 	for y := 0; y < ViewportWidth; y++ {
 		for x := 0; x < ViewportHeight; x++ {
-			tNum := l.GetTileNum(x, y)
+			tNum := l.GetTileIndex(x, y)
 			terrainTile := l.Terrain[tNum]
 			objectTile := l.Objects[tNum]
 			overlayTile := l.Overlay[tNum]
@@ -123,4 +130,14 @@ func (l *MapLayers) DrawMap(screen *ebiten.Image) {
 			screen.DrawImage(overlayTile.Image, op)
 		}
 	}
+}
+
+func CheckIsWalkable(tNum int) bool {
+	if tNum >= len(tileInfo) || tNum < 0 {
+		return true
+	}
+	if tileInfo[tNum].IsWalkable {
+		return true
+	}
+	return false
 }

@@ -302,7 +302,7 @@ func processTileData(tileId int, flags uint32) TileInfo {
 		t.Type = "Weapon"
 		t.IsWalkable = false
 	default:
-		t.IsWalkable = false
+		t.IsWalkable = true
 	}
 	// Locator minimap tiles, we grab by ID: tiles 817-837
 	if (tileId >= 817) && (tileId <= 837) {

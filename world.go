@@ -1,10 +1,12 @@
 package main
 
 import (
-	"math/rand"
-
 	"github.com/bytearena/ecs"
 )
+
+// Global components
+var position *ecs.Component
+var renderable *ecs.Component
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
@@ -16,7 +18,7 @@ type GameWorld struct {
 func NewWorld() GameWorld {
 	// For now, choose a random screen from those available and start there
 	// TODO: Detect where the starting screens are, find the level branching logic
-	msNum := rand.Intn(len(zoneInfo))
+	msNum := RandomInt(len(zoneInfo))
 	ms := NewMapScreen(msNum)
 
 	maps := make([]MapScreen, 0)
@@ -31,6 +33,11 @@ func (gw *GameWorld) GetLayers() MapLayers {
 	return gw.Maps[gw.CurrentMap].Layers
 }
 
+func (gw *GameWorld) GetScreen() MapScreen {
+	// return the current MapScreen
+	return gw.Maps[gw.CurrentMap]
+}
+
 func InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	// Initialize the world via the ECS
 	tags := make(map[string]ecs.Tag)
@@ -38,21 +45,27 @@ func InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 
 	// Make stuff!
 	player := manager.NewComponent()
-	position := manager.NewComponent()
-	renderable := manager.NewComponent()
+	playerImg := tiles[799]
+	position = manager.NewComponent()
+	renderable = manager.NewComponent()
 	movable := manager.NewComponent()
 
 	manager.NewEntity().
 		AddComponent(player, Player{}).
-		AddComponent(renderable, Renderable{}).
+		AddComponent(renderable, Renderable{
+			Image: playerImg,
+		}).
 		AddComponent(movable, Movable{}).
 		AddComponent(position, &Position{
-			X: 5,
-			Y: 5,
+			X: 4,
+			Y: 7,
 		})
 
 	players := ecs.BuildTag(player, position)
 	tags["players"] = players
+
+	renderables := ecs.BuildTag(renderable, position)
+	tags["renderables"] = renderables
 
 	return manager, tags
 }
