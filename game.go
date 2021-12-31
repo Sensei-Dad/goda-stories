@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/bytearena/ecs"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -14,6 +15,8 @@ const ViewportWidth, ViewportHeight = 18, 18 // Viewport width and height, in ti
 type Game struct {
 	CurrentScreen int
 	World         GameWorld
+	ECSManager    *ecs.Manager
+	ECSTags       map[string]ecs.Tag
 }
 
 var blankTile = ebiten.NewImage(tileWidth, tileHeight)
@@ -23,6 +26,11 @@ func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
 	tiles = LoadAllTiles(tInfo)
 	g := &Game{}
 	g.World = NewWorld()
+
+	// ECS!
+	mgr, tags := InitializeWorld()
+	g.ECSManager = mgr
+	g.ECSTags = tags
 
 	return g
 }
@@ -37,20 +45,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	//  == Objects ==
 	// === Terrain ===
 	layers := g.World.GetLayers()
-	for y := 0; y < ViewportWidth; y++ {
-		for x := 0; x < ViewportHeight; x++ {
-			tNum := layers.GetTileNum(x, y)
-			terrainTile := layers.Terrain[tNum]
-			objectTile := layers.Objects[tNum]
-			overlayTile := layers.Overlay[tNum]
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(terrainTile.PixelX), float64(terrainTile.PixelY))
-			screen.DrawImage(terrainTile.Image, op)
-			screen.DrawImage(objectTile.Image, op)
-			screen.DrawImage(overlayTile.Image, op)
-		}
-	}
+	layers.DrawMap(screen)
 
 	// Show FPS
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))

@@ -2,6 +2,8 @@ package main
 
 import (
 	"math/rand"
+
+	"github.com/bytearena/ecs"
 )
 
 // World holds all the various bits of the game that we generate
@@ -27,4 +29,30 @@ func NewWorld() GameWorld {
 func (gw *GameWorld) GetLayers() MapLayers {
 	// return the map of whatever the current level is
 	return gw.Maps[gw.CurrentMap].Layers
+}
+
+func InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
+	// Initialize the world via the ECS
+	tags := make(map[string]ecs.Tag)
+	manager := ecs.NewManager()
+
+	// Make stuff!
+	player := manager.NewComponent()
+	position := manager.NewComponent()
+	renderable := manager.NewComponent()
+	movable := manager.NewComponent()
+
+	manager.NewEntity().
+		AddComponent(player, Player{}).
+		AddComponent(renderable, Renderable{}).
+		AddComponent(movable, Movable{}).
+		AddComponent(position, &Position{
+			X: 5,
+			Y: 5,
+		})
+
+	players := ecs.BuildTag(player, position)
+	tags["players"] = players
+
+	return manager, tags
 }

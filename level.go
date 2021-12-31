@@ -107,3 +107,20 @@ func (l *MapLayers) GetTileNum(x, y int) int {
 	// Helper function: input tile coords, return tile index
 	return (y * l.Width) + x
 }
+
+func (l *MapLayers) DrawMap(screen *ebiten.Image) {
+	for y := 0; y < ViewportWidth; y++ {
+		for x := 0; x < ViewportHeight; x++ {
+			tNum := l.GetTileNum(x, y)
+			terrainTile := l.Terrain[tNum]
+			objectTile := l.Objects[tNum]
+			overlayTile := l.Overlay[tNum]
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(terrainTile.PixelX), float64(terrainTile.PixelY))
+			screen.DrawImage(terrainTile.Image, op)
+			screen.DrawImage(objectTile.Image, op)
+			screen.DrawImage(overlayTile.Image, op)
+		}
+	}
+}
