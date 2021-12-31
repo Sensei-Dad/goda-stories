@@ -76,21 +76,21 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 			ter := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: true,
+				IsWalkable: tileInfo[tNum].IsWalkable,
 				Image:      ms.GetTile(terNum),
 			}
 			objNum := z.LayerData.Objects[tNum]
 			obj := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: true,
+				IsWalkable: tileInfo[tNum].IsWalkable,
 				Image:      ms.GetTile(objNum),
 			}
 			ovrNum := z.LayerData.Overlay[tNum]
 			ovr := MapTile{
 				PixelX:     x * tileWidth,
 				PixelY:     y * tileHeight,
-				IsWalkable: true,
+				IsWalkable: tileInfo[tNum].IsWalkable,
 				Image:      ms.GetTile(ovrNum),
 			}
 

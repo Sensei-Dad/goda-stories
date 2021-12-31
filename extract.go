@@ -92,14 +92,11 @@ type ZoneInfo struct {
 
 type TileInfo struct {
 	// TODO: need to process flags in separate groups (TypeFlags, ItemFlags, etc...)?
-	Id    string
-	Flags string
-	// Rather than have IsObject, IsTerrain, IsColliding, CanPush, IsOverlay, and so
-	// on for all 32 bits... let's group stuff by making more struct types
-	Type TileType
+	Id         string
+	Flags      string
+	Type       string
+	IsWalkable bool
 }
-
-type TileType string
 
 type ObjectTrigger struct {
 	Type        string
@@ -276,7 +273,41 @@ func processTileData(tileId int, flags uint32) TileInfo {
 	t.Id = fmt.Sprintf("%04d", tileId)
 	t.Flags = reverse(fmt.Sprintf("%032b", flags))
 
-	// TODO: Process bitwise flags here
+	// The first 9 bits let us break down what kind of tile this is
+	// For now, this just affects collisions
+	category := t.Flags[:9]
+	switch category {
+	case "010000000":
+		t.Type = "Terrain"
+		t.IsWalkable = true
+	case "101000000":
+		t.Type = "Object"
+		t.IsWalkable = false
+	case "001000000":
+		t.Type = "Terrain"
+		t.IsWalkable = false
+	case "101100000":
+		t.Type = "Block"
+		t.IsWalkable = false
+	case "100010000", "000010000":
+		t.Type = "Overlay"
+		t.IsWalkable = true
+	case "100000001":
+		t.Type = "Creature"
+		t.IsWalkable = false
+	case "100000010":
+		t.Type = "Item"
+		t.IsWalkable = false
+	case "100000100":
+		t.Type = "Weapon"
+		t.IsWalkable = false
+	default:
+		t.IsWalkable = false
+	}
+	// Locator minimap tiles, we grab by ID: tiles 817-837
+	if (tileId >= 817) && (tileId <= 837) {
+		t.Type = "Locator"
+	}
 
 	return t
 }
@@ -344,7 +375,6 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 	}
 	objInfoAddress := (6 * z.Width * z.Height) + 22
 	numTriggers := int(binary.LittleEndian.Uint16(zData[objInfoAddress:]))
-	// fmt.Printf(" Processing %d triggers", numTriggers)
 	if numTriggers > 0 {
 		z.ObjectTriggers = make([]ObjectTrigger, numTriggers)
 		for k := 0; k < numTriggers; k++ {
@@ -368,7 +398,6 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 			}
 		}
 	}
-	fmt.Println()
 
 	return *z
 }
