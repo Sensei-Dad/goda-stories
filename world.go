@@ -17,13 +17,17 @@ type GameWorld struct {
 
 func NewWorld() GameWorld {
 	// For now, choose a random screen from those available and start there
-	// TODO: Detect where the starting screens are, find the level branching logic
+	// TODO: actual worldgen
 	msNum := RandomInt(len(zoneInfo))
 	ms := NewMapScreen(msNum)
 
 	maps := make([]MapScreen, 0)
 	maps = append(maps, ms)
-	gw := GameWorld{Name: "Goda Stories", Maps: maps, CurrentMap: 0}
+	gw := GameWorld{
+		Name:       "Goda Stories",
+		Maps:       maps,
+		CurrentMap: 0,
+	}
 
 	return gw
 }
@@ -45,6 +49,7 @@ func InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 
 	// Make stuff!
 	player := manager.NewComponent()
+	// TODO: Suss out where Luke's sprites are => create animations
 	playerImg := tiles[799]
 	position = manager.NewComponent()
 	renderable = manager.NewComponent()

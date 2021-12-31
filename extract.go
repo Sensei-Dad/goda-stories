@@ -220,15 +220,13 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		log.Fatal(err)
 	}
 
-	// output map info to file
+	// Save map info to HTML and images to PNGs
 	fmt.Printf("[%s] Stitching maps...\n", fileName)
 	numZones := len(outputs["ZONE"].([]ZoneInfo))
 	skipped := 0
-
-	// Construct map layer markdown file
 	mapsHtml := htmlStarter
+
 	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
-		// Save map image and fill output with zone data
 		mapNum := fmt.Sprintf("%03d", zId)
 		mapFilePath := "assets/maps/map_" + mapNum + ".png"
 
@@ -238,22 +236,14 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		if err == nil {
 			// Skip creating the map if it's already done
 			skipped++
-			// fmt.Printf(".")
 		} else {
 			// Otherwise, stitch the map together and save it
 			err = saveMapToPNG(mapFilePath, zData)
 			if err != nil {
 				log.Fatal(err)
 			}
-			// fmt.Printf("*")
 		}
-
-		// Prune the map layers, so the output is cleaner
-		// outputs["ZONE"].([]ZoneInfo)[zId].LayerData.Terrain = nil
-		// outputs["ZONE"].([]ZoneInfo)[zId].LayerData.Objects = nil
-		// outputs["ZONE"].([]ZoneInfo)[zId].LayerData.Overlay = nil
 	}
-	// fmt.Println("]")
 	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
 	mapsHtml += "\n</body>\n</html>\n"
 

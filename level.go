@@ -13,8 +13,6 @@ type MapScreen struct {
 }
 
 type MapTile struct {
-	PixelX       int
-	PixelY       int
 	IsWalkable   bool
 	TerrainImage *ebiten.Image
 	ObjectsImage *ebiten.Image
@@ -71,21 +69,18 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 		for x := 0; x < z.Width; x++ {
 			// Assemble the map from layer data
 			// TODO: account for entities (pushblocks, creatures, etc.)
-			// TODO: probably lump the objImage, terImage, and ovrImage into the same MapTile struct
-			tNum := (y * z.Width) + x
-			terNum := z.LayerData.Terrain[tNum]
-			objNum := z.LayerData.Objects[tNum]
-			ovrNum := z.LayerData.Overlay[tNum]
+			tIndex := (y * z.Width) + x
+			terNum := z.LayerData.Terrain[tIndex]
+			objNum := z.LayerData.Objects[tIndex]
+			ovrNum := z.LayerData.Overlay[tIndex]
 			tile := MapTile{
-				PixelX:       x * tileWidth,
-				PixelY:       y * tileHeight,
 				IsWalkable:   CheckIsWalkable(objNum),
 				TerrainImage: ms.GetTileImage(terNum),
 				ObjectsImage: ms.GetTileImage(objNum),
 				OverlayImage: ms.GetTileImage(ovrNum),
 			}
 
-			ret.Tiles[tNum] = tile
+			ret.Tiles[tIndex] = tile
 		}
 	}
 
@@ -94,48 +89,44 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 
 func (l *MapLayers) GetTileIndex(x, y int) int {
 	// Helper function: input tile coords, return tile index
+	if x != Clamp(x, 0, l.Width-1) || y != Clamp(y, 0, l.Height-1) {
+		return -1
+	}
 	return (y * l.Width) + x
 }
 
-func (l *MapLayers) DrawTerrain(screen *ebiten.Image) {
-	// Render the terrain layer
-	for y := 0; y < ViewportWidth; y++ {
-		for x := 0; x < ViewportHeight; x++ {
-			tNum := l.GetTileIndex(x, y)
-			tile := l.Tiles[tNum].TerrainImage
+type LayerName string
+
+const (
+	Terrain LayerName = "terrain"
+	Objects LayerName = "objects"
+	Overlay LayerName = "overlay"
+)
+
+func (l *MapLayers) DrawLayer(layer LayerName, screen *ebiten.Image) {
+	// Render the appropriate layer
+	for y := 0; y < ViewportHeight; y++ {
+		for x := 0; x < ViewportWidth; x++ {
+			tIndex := l.GetTileIndex(x, y)
+			var tile *ebiten.Image
+			// Skip the tile if it's out of bounds
+			if tIndex == -1 {
+				tile = blankTile
+			} else {
+				switch layer {
+				case Terrain:
+					tile = l.Tiles[tIndex].TerrainImage
+				case Objects:
+					tile = l.Tiles[tIndex].ObjectsImage
+				case Overlay:
+					tile = l.Tiles[tIndex].OverlayImage
+				default:
+					log.Fatal("Unrecognized layer name")
+				}
+			}
 
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(l.Tiles[tNum].PixelX), float64(l.Tiles[tNum].PixelY))
-			screen.DrawImage(tile, op)
-		}
-	}
-}
-
-func (l *MapLayers) DrawObjects(screen *ebiten.Image) {
-	// Render the Objects layer
-	// TODO: Skip movables like Blocks
-	for y := 0; y < ViewportWidth; y++ {
-		for x := 0; x < ViewportHeight; x++ {
-			tNum := l.GetTileIndex(x, y)
-			tile := l.Tiles[tNum].ObjectsImage
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(l.Tiles[tNum].PixelX), float64(l.Tiles[tNum].PixelY))
-			screen.DrawImage(tile, op)
-		}
-	}
-}
-
-func (l *MapLayers) DrawOverlay(screen *ebiten.Image) {
-	// Render the Overlay layer
-	// Usually drawn on top of the player
-	for y := 0; y < ViewportWidth; y++ {
-		for x := 0; x < ViewportHeight; x++ {
-			tNum := l.GetTileIndex(x, y)
-			tile := l.Tiles[tNum].OverlayImage
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(l.Tiles[tNum].PixelX), float64(l.Tiles[tNum].PixelY))
+			op.GeoM.Translate(float64(x*tileWidth), float64(y*tileHeight))
 			screen.DrawImage(tile, op)
 		}
 	}

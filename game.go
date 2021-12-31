@@ -8,9 +8,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-const tileWidth, tileHeight = 32, 32         // Tile width and height, in pixels
-const ViewportWidth, ViewportHeight = 18, 18 // Viewport width and height, in tiles
+const tileWidth, tileHeight = 32, 32 // Tile width and height, in pixels
 // const uiPadding = 5                  // Padding between UI elements, in pixels
+const ViewportWidth, ViewportHeight = 12, 12
 
 type Game struct {
 	CurrentScreen int
@@ -36,7 +36,7 @@ func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
 }
 
 func (g *Game) Update() error {
-	TryMovePlayer(g)
+	ProcessInput(g)
 	return nil
 }
 
@@ -47,10 +47,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	//  ==   Objects   ==
 	// ===   Terrain   ===
 	layers := g.World.GetLayers()
-	layers.DrawTerrain(screen)
-	layers.DrawObjects(screen)
+	layers.DrawLayer(Terrain, screen)
+	layers.DrawLayer(Objects, screen)
 	ProcessRenderables(g, layers, screen)
-	layers.DrawOverlay(screen)
+	layers.DrawLayer(Overlay, screen)
 
 	// Show FPS
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
@@ -58,7 +58,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// for now, return the map with nothing else around it
-	return ViewportWidth * tileWidth, ViewportHeight * tileHeight
+	return (ViewportWidth * tileWidth), (ViewportHeight * tileHeight)
 }
 
 func GetZone(zoneNum int) (z ZoneInfo) {
