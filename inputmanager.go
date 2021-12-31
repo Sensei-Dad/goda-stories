@@ -34,7 +34,7 @@ func TryMovePlayer(g *Game) {
 		if pos.X+x == Clamp(pos.X+x, 0, ml.Width-1) && pos.Y+y == Clamp(pos.Y+y, 0, ml.Height-1) {
 			// Check the tile we're moving to
 			tIndex := ml.GetTileIndex(pos.X+x, pos.Y+y)
-			if CheckIsWalkable(ml.Objects[tIndex].Id) {
+			if ml.Tiles[tIndex].IsWalkable {
 				pos.X += x
 				pos.Y += y
 			} else {

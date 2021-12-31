@@ -8,7 +8,7 @@ func ProcessRenderables(g *Game, ml MapLayers, screen *ebiten.Image) {
 		img := result.Components[renderable].(Renderable).Image
 
 		tIndex := ml.GetTileIndex(pos.X, pos.Y)
-		tile := ml.Objects[tIndex]
+		tile := ml.Tiles[tIndex]
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(float64(tile.PixelX), float64(tile.PixelY))
 		screen.DrawImage(img, op)
