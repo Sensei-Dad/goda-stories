@@ -20,6 +20,7 @@ import (
 
 const tileInfoFile = "assets/text/tileInfo.txt"
 const mapInfoHtml = "assets/text/mapInfo.html"
+const mapInfoText = "assets/text/mapInfo.txt"
 const htmlStarter string = `<!DOCTYPE html>
 <html lang="en">
 
@@ -88,6 +89,11 @@ type ZoneInfo struct {
 		Overlay []int
 	}
 	ObjectTriggers []ObjectTrigger
+	Izax           []byte
+	Izx2           []byte
+	Izx3           []byte
+	Izx4           []byte
+	Iact           [][]byte
 }
 
 type TileInfo struct {
@@ -99,13 +105,10 @@ type TileInfo struct {
 }
 
 type ObjectTrigger struct {
-	Type        string
-	X           int
-	Y           int
-	Arg         int
-	TerrainInfo TileInfo
-	ObjectInfo  TileInfo
-	OverlayInfo TileInfo
+	Type string
+	X    int
+	Y    int
+	Arg  int
 }
 
 func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
@@ -186,7 +189,6 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 				if err == nil {
 					skipped++
 					reader.ReadBytes(0x400)
-					// fmt.Printf(".")
 					continue
 				} else {
 					_, tileBytes, _ := reader.ReadBytes(0x400)
@@ -194,7 +196,6 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 					if err != nil {
 						log.Fatal(err)
 					}
-					// fmt.Printf("*")
 				}
 			}
 			fmt.Printf("    %d tiles extracted, %d skipped\n", numTiles-skipped, skipped)
@@ -216,6 +217,10 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		log.Fatal(err)
 	}
 	mapLayers, err := os.Create(mapInfoHtml)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mapInfo, err := os.Create(mapInfoText)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -252,6 +257,18 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 
 	fmt.Printf("    Dumping output to %s...\n", mapInfoHtml)
 	spew.Fprint(mapLayers, mapsHtml)
+
+	fmt.Printf("    Dumping output to %s...\n", mapInfoText)
+	// Cut the layers, so output is cleaner
+	shorterInfo := make([]ZoneInfo, len(zones))
+	for i, z := range zones {
+		zon := z
+		zon.LayerData.Terrain = nil
+		zon.LayerData.Objects = nil
+		zon.LayerData.Overlay = nil
+		shorterInfo[i] = zon
+	}
+	spew.Fdump(mapInfo, shorterInfo)
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)
 
@@ -363,30 +380,49 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 		"xwing_to_dagobah",
 		"UNKNOWN",
 	}
-	objInfoAddress := (6 * z.Width * z.Height) + 22
-	numTriggers := int(binary.LittleEndian.Uint16(zData[objInfoAddress:]))
+	offset := (6 * z.Width * z.Height) + 22
+	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
 		z.ObjectTriggers = make([]ObjectTrigger, numTriggers)
 		for k := 0; k < numTriggers; k++ {
-			// fmt.Printf(".")
-			offset := objInfoAddress + (12 * k)
 			z.ObjectTriggers[k].Type = triggerTypes[int(binary.LittleEndian.Uint16(zData[offset+2:]))]
 			z.ObjectTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
 			z.ObjectTriggers[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
 			z.ObjectTriggers[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
-			tnum := z.LayerData.Terrain[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
-			if tnum != 65535 {
-				z.ObjectTriggers[k].TerrainInfo = tiles[tnum]
-			}
-			tnum = z.LayerData.Objects[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
-			if tnum != 65535 {
-				z.ObjectTriggers[k].ObjectInfo = tiles[tnum]
-			}
-			tnum = z.LayerData.Overlay[(z.Width*z.ObjectTriggers[k].Y)+z.ObjectTriggers[k].X]
-			if tnum != 65535 {
-				z.ObjectTriggers[k].OverlayInfo = tiles[tnum]
-			}
+			offset += 12
 		}
+	}
+
+	// Advance past the IZAX header and grab action data
+	offset += 6
+	sectionLength := int(binary.LittleEndian.Uint16(zData[offset:]))
+	offset += 2
+	z.Izax = zData[offset : offset+sectionLength-6]
+
+	// Advance past the IZX2 header
+	offset += sectionLength - 2
+	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
+	offset += 2
+	z.Izx2 = zData[offset : offset+sectionLength-6]
+
+	// ...And again for IZX3
+	offset += sectionLength - 2
+	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
+	offset += 2
+	z.Izx3 = zData[offset : offset+sectionLength-6]
+
+	// ...And so on
+	offset += sectionLength - 2
+	z.Izx4 = zData[offset : offset+8]
+	offset += 8
+
+	// Parse actions, if there are any
+	for len(zData) >= offset+4 {
+		// IACT + sectionLength = 8 bytes
+		sectionLength = int(binary.LittleEndian.Uint32(zData[offset+4:]))
+		offset += 8
+		z.Iact = append(z.Iact, zData[offset:offset+sectionLength])
+		offset += sectionLength
 	}
 
 	return *z
