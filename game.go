@@ -61,7 +61,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	layers.DrawLayer(Overlay, screen)
 
 	// Show FPS
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	// ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	// Show player stuff
+	for _, result := range playerView.Get() {
+		crtr := result.Components[creatureComp].(*Creature)
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("State:  %s\nFacing: %s", crtr.State, crtr.Facing))
+	}
 }
 
 func (g *Game) Layout(w, h int) (int, int) {

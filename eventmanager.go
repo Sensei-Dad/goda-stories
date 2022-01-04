@@ -19,29 +19,27 @@ func (g *Game) ProcessMovement() {
 		deltaX := pos.X - moves.OldX
 		deltaY := pos.Y - moves.OldY
 
+		if crtr.State == Walking && deltaX == 0 && deltaY == 0 { // Thing is not moving, or has finished a move
+			crtr.State = Standing
+		}
 		if crtr.State == Standing && (deltaX != 0 || deltaY != 0) { // Creature wants to move
-			crtr.State = Walking          // Do this to avoid repeated inputs
-			if ml.CanMove(pos.X, pos.Y) { // Check the map, first
-				// Move to that tile if nobody else wants it
-				thingCanMove := true
-				for _, thing := range collideView.Get() {
-					// Check all the collidables for common destinations, except itself
-					// This is ugly, but manageable since we're only ever checking against one pool of stuff
-					pos2 := thing.Components[positionComp].(*Position)
-					col2 := thing.Components[collideComp].(*Collidable)
-					if pos2.X == pos.X && pos2.Y == pos.Y && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
-						thingCanMove = false
-					}
+			crtr.State = Walking // Do this to avoid repeated inputs
+			// Move to that tile if nobody else wants it
+			thingCanMove := ml.CanMove(pos.X, pos.Y)
+			for _, thing := range collideView.Get() {
+				// Check all the collidables for common destinations, except itself
+				// This is ugly, but manageable since we're only ever checking against one pool of stuff
+				pos2 := thing.Components[positionComp].(*Position)
+				col2 := thing.Components[collideComp].(*Collidable)
+				if pos2.X == pos.X && pos2.Y == pos.Y && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
+					fmt.Println("Found blocking Entity")
+					thingCanMove = false
 				}
-				if thingCanMove {
-					// ...then move the thing!
-					fmt.Printf("Starting walk: %s wants to go from (%d,%d) to (%d,%d)\n", crtr.Name, moves.OldX, moves.OldY, pos.X, pos.Y)
-				} else {
-					// ...otherwise, move it back
-					fmt.Printf("%s wants to go from (%d,%d) to (%d,%d), but it's blocked\n", crtr.Name, moves.OldX, moves.OldY, pos.X, pos.Y)
-					pos.X = moves.OldX
-					pos.Y = moves.OldY
-				}
+			}
+			if !thingCanMove {
+				// cancel the move
+				pos.X = moves.OldX
+				pos.Y = moves.OldY
 			}
 		}
 		if crtr.State == Walking {
@@ -60,7 +58,6 @@ func (g *Game) ProcessMovement() {
 			if distanceX <= 0 && distanceY <= 0 {
 				// Set the values to be exactly on the tile
 				fmt.Printf("Finished walk: %s went from (%d,%d) to (%d,%d)\n", crtr.Name, moves.OldX, moves.OldY, pos.X, pos.Y)
-				crtr.State = Standing
 				img.PixelX = float64(pos.X * tileWidth)
 				img.PixelY = float64(pos.Y * tileHeight)
 				moves.OldX = pos.X

@@ -176,7 +176,8 @@ func CheckIsWalkable(tNum int) bool {
 func (l *MapLayers) CanMove(x, y int) bool {
 	// TODO: check collision on the next screen over
 	tIndex := l.GetTileIndex(x, y)
-	return (x != Clamp(x, 0, l.Width-1) || y != Clamp(y, 0, l.Height-1)) &&
-		tIndex == Clamp(tIndex, 0, len(l.Tiles)-1) &&
-		l.Tiles[tIndex].IsWalkable
+	if x == Clamp(x, 0, l.Width-1) && y == Clamp(y, 0, l.Height-1) && l.Tiles[tIndex].IsWalkable {
+		return true
+	}
+	return false
 }

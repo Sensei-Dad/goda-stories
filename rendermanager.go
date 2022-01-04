@@ -1,6 +1,8 @@
 package main
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 func ProcessRenderables(g *Game, ml MapLayers, screen *ebiten.Image) {
 	for _, result := range drawView.Get() {

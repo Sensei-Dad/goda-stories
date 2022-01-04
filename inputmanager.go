@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -54,13 +53,10 @@ func (g *Game) ProcessInput() {
 		pos := result.Components[positionComp].(*Position)
 		crtr := result.Components[creatureComp].(*Creature)
 
-		if crtr.State != Standing && (deltaX != 0 || deltaY != 0) {
-			fmt.Printf("Detected input, but char is %s and not Standing\n", crtr.State)
-		} else if deltaX != 0 || deltaY != 0 {
+		if crtr.State == Standing && (deltaX != 0 || deltaY != 0) {
 			pos.X += deltaX
 			pos.Y += deltaY
 			crtr.Facing = dir
-			fmt.Printf("Detected input: char is %s %s\n", crtr.State, crtr.Facing)
 		}
 	}
 }

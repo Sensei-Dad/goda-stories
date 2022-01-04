@@ -88,7 +88,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	// TODO: actually try to place the player on a movable tile
 	playerX := 4
 	playerY := 7
-	playerSpeed = 45
+	playerSpeed = 60
 
 	manager.NewEntity().
 		AddComponent(player, &Player{}).
