@@ -7,7 +7,7 @@ import (
 )
 
 // Global vars
-var playerSpeed int
+var playerSpeed float64
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
@@ -61,6 +61,14 @@ func (g *Game) AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
 		AddComponent(positionComp, &Position{
 			X: x,
 			Y: y,
+		}).
+		AddComponent(movementComp, &Movable{
+			OldX:  x,
+			OldY:  y,
+			Speed: playerSpeed,
+		}).
+		AddComponent(collideComp, &Collidable{
+			IsBlocking: true,
 		})
 }
 
@@ -73,39 +81,57 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	player := manager.NewComponent()
 	creatureComp = manager.NewComponent()
 	renderableComp = manager.NewComponent()
-	movable := manager.NewComponent()
+	movementComp = manager.NewComponent()
 	positionComp = manager.NewComponent()
+	collideComp = manager.NewComponent()
 
-	playerSpeed = 1
+	// TODO: actually try to place the player on a movable tile
+	playerX := 4
+	playerY := 7
+	playerSpeed = 45
 
 	manager.NewEntity().
-		AddComponent(player, &Player{
-			Speed: playerSpeed,
-		}).
+		AddComponent(player, &Player{}).
 		AddComponent(creatureComp, &Creature{
 			Name:   creatureInfo[0].Name,
 			State:  Standing,
 			Facing: Down,
 		}).
 		AddComponent(renderableComp, &Renderable{
-			Image: tiles[799], // TODO: Suss out where Luke's sprites are => create animations
+			Image:  tiles[799], // TODO: Suss out where Luke's sprites are => create animations
+			PixelX: float64(playerX * tileWidth),
+			PixelY: float64(playerY * tileHeight),
 		}).
-		AddComponent(movable, &Movable{}).
+		AddComponent(movementComp, &Movable{
+			OldX:  4,
+			OldY:  7,
+			Speed: playerSpeed,
+		}).
 		AddComponent(positionComp, &Position{
 			X: 4,
 			Y: 7,
-		})
+		}).AddComponent(collideComp, &Collidable{
+		IsBlocking: true,
+	})
 
 	players := ecs.BuildTag(player, creatureComp, positionComp)
 	tags["players"] = players
 	playerView = manager.CreateView(players)
 
-	renderables := ecs.BuildTag(renderableComp, positionComp)
+	renderables := ecs.BuildTag(renderableComp)
 	tags["renderables"] = renderables
 	drawView = manager.CreateView(renderables)
 
 	creatures := ecs.BuildTag(creatureComp, positionComp)
 	tags["creatures"] = creatures
+
+	movables := ecs.BuildTag(movementComp, positionComp, creatureComp, renderableComp)
+	tags["movables"] = movables
+	moveView = manager.CreateView(movables)
+
+	collidables := ecs.BuildTag(collideComp, positionComp)
+	tags["collidables"] = collidables
+	collideView = manager.CreateView(collidables)
 
 	return manager, tags
 }

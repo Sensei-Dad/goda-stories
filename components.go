@@ -7,10 +7,15 @@ import (
 
 // Global components
 var playerView *ecs.View
+var moveView *ecs.View
 var drawView *ecs.View
+var collideView *ecs.View
+
 var positionComp *ecs.Component
 var renderableComp *ecs.Component
 var creatureComp *ecs.Component
+var movementComp *ecs.Component
+var collideComp *ecs.Component
 
 type CreatureState string
 type CreatureDirection string
@@ -34,7 +39,6 @@ const (
 )
 
 type Player struct {
-	Speed int
 }
 
 type Creature struct {
@@ -53,7 +57,12 @@ type Position struct {
 }
 
 type Renderable struct {
-	Image *ebiten.Image
+	Image  *ebiten.Image
+	PixelX float64
+	PixelY float64
+}
+
+type PlayerAnimation struct {
 }
 
 type AnimatedTile struct {
@@ -62,7 +71,12 @@ type AnimatedTile struct {
 	Frames       []int // List of tile IDs, for drawing
 }
 
+type Collidable struct {
+	IsBlocking bool
+}
+
 type Movable struct {
-	PixelX float64
-	PixelY float64
+	OldX  int
+	OldY  int
+	Speed float64
 }

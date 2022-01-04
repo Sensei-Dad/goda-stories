@@ -40,9 +40,11 @@ func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
 }
 
 func (g *Game) Update() error {
-	g.tick++
-	ProcessInput(g)
-	// TODO: process Creature movement
+	// g.tick++
+	g.ProcessInput()
+	// TODO: Handle AI, randomly move critters around, etc.
+	// ProcessCreatures(g)
+	g.ProcessMovement()
 	return nil
 }
 
