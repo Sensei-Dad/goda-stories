@@ -11,8 +11,11 @@ import (
 )
 
 const tileInfoFile = "assets/text/tileInfo.txt"
+const itemInfoFile = "assets/text/itemInfo.txt"
+const puzzleInfoFile = "assets/text/puzzleInfo.txt"
 const mapInfoHtml = "assets/text/mapInfo.html"
 const mapInfoText = "assets/text/mapInfo.txt"
+const crtrInfoText = "assets/text/creatureInfo.txt"
 const htmlStarter string = `<!DOCTYPE html>
 <html lang="en">
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghostiam/binstruct"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type ZoneInfo struct {
@@ -47,7 +48,27 @@ type TileTrigger struct {
 	Arg  int
 }
 
-func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
+type PuzzleInfo struct {
+	Id           int
+	TextBytes    []byte
+	LockItemId   int
+	RewardItemId int
+}
+
+type ItemInfo struct {
+	Id   int
+	Name string
+	MapX int
+	MapY int
+}
+
+type CreatureInfo struct {
+	Id     int
+	Name   string
+	Images map[string]*ebiten.Image
+}
+
+func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []PuzzleInfo, []CreatureInfo) {
 	yodaFilePath := "data/" + fileName
 	tileFlags := []TileInfo{}
 	zones := []ZoneInfo{}
@@ -81,7 +102,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 			major, _ := reader.ReadUint16()
 			minor, _ := reader.ReadUint16()
 			outputs[s] = fmt.Sprint(int(major)) + "." + fmt.Sprint(int(minor))
-		case "STUP", "SNDS", "PUZ2", "CHAR", "CHWP", "CAUX", "TNAM":
+		case "STUP", "SNDS", "CHWP", "CAUX":
 			// Basically, just skip all these sections
 			sectionLength, _ := reader.ReadUint32()
 			_, _, err := reader.ReadBytes(int(sectionLength))
@@ -89,7 +110,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 			// outputs[s] = sectionData
 
 			if err != nil {
-				fmt.Printf("Error reading section %s\n", section)
+				fmt.Printf("Error reading section %s\n", s)
 				log.Fatal(err)
 			}
 		case "ZONE":
@@ -135,6 +156,33 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 				}
 			}
 			fmt.Printf("    %d tiles extracted, %d skipped\n", numTiles-skipped, skipped)
+		case "PUZ2":
+			sectionLength, _ := reader.ReadUint32()
+			_, puzzleData, err := reader.ReadBytes(int(sectionLength))
+			puzzles := processPuzzleData(puzzleData)
+			if err != nil {
+				fmt.Printf("Error reading section %s\n", s)
+				log.Fatal(err)
+			}
+			outputs[s] = puzzles
+		case "TNAM":
+			sectionLength, _ := reader.ReadUint32()
+			_, itemData, err := reader.ReadBytes(int(sectionLength))
+			items := processItemList(itemData)
+			if err != nil {
+				fmt.Printf("Error reading section %s\n", s)
+				log.Fatal(err)
+			}
+			outputs[s] = items
+		case "CHAR":
+			sectionLength, _ := reader.ReadUint32()
+			_, itemData, err := reader.ReadBytes(int(sectionLength))
+			chars := processCharList(itemData)
+			if err != nil {
+				fmt.Printf("Error reading section %s\n", s)
+				log.Fatal(err)
+			}
+			outputs[s] = chars
 		case "ENDF":
 			// Read whatever odd bytes are left?
 			_, err = reader.ReadAll()
@@ -142,7 +190,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 				log.Fatal(err)
 			}
 		default:
-			fmt.Printf("UNHANDLED CASE: %s\n", section)
+			fmt.Printf("UNHANDLED CASE: %s\n", s)
 			log.Fatal("Unhandled case")
 		}
 	}
@@ -152,11 +200,23 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	itInfo, err := os.Create(itemInfoFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	puzzInfo, err := os.Create(puzzleInfoFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 	mapLayers, err := os.Create(mapInfoHtml)
 	if err != nil {
 		log.Fatal(err)
 	}
 	mapInfo, err := os.Create(mapInfoText)
+	if err != nil {
+		log.Fatal(err)
+	}
+	crtrInfo, err := os.Create(crtrInfoText)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -190,12 +250,14 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 
 	fmt.Printf("    Dumping output to %s...\n", tileInfoFile)
 	spew.Fdump(tileInfo, tileFlags)
-
+	fmt.Printf("    Dumping output to %s...\n", itemInfoFile)
+	spew.Fdump(itInfo, outputs["TNAM"].([]ItemInfo))
+	fmt.Printf("    Dumping output to %s...\n", puzzleInfoFile)
+	spew.Fdump(puzzInfo, outputs["PUZ2"].([]PuzzleInfo))
 	fmt.Printf("    Dumping output to %s...\n", mapInfoHtml)
 	spew.Fprint(mapLayers, mapsHtml)
-
 	fmt.Printf("    Dumping output to %s...\n", mapInfoText)
-	// Cut the layers, so output is cleaner
+	// Cut the layers here, so output is cleaner
 	shorterInfo := make([]ZoneInfo, len(zones))
 	for i, z := range zones {
 		zon := z
@@ -205,10 +267,12 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo) {
 		shorterInfo[i] = zon
 	}
 	spew.Fdump(mapInfo, shorterInfo)
+	fmt.Printf("    Dumping output to %s...\n", crtrInfoText)
+	spew.Fdump(crtrInfo, outputs["CHAR"].([]CreatureInfo))
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)
 
-	return tileFlags, zones
+	return tileFlags, zones, outputs["TNAM"].([]ItemInfo), outputs["PUZ2"].([]PuzzleInfo), outputs["CHAR"].([]CreatureInfo)
 }
 
 func processTileData(tileId int, flags uint32) TileInfo {
@@ -362,6 +426,80 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 	}
 
 	return *z
+}
+
+func processPuzzleData(pData []byte) (ret []PuzzleInfo) {
+	ret = make([]PuzzleInfo, 0)
+	offset := 0
+	for len(pData) > (offset) {
+		// 2 bytes of puzzle ID, plus 4 for the IPUZ header
+		p := PuzzleInfo{}
+		p.Id = int(binary.LittleEndian.Uint16(pData[offset:]))
+		if p.Id == 65535 { // End of puzzle section: we're out!
+			return
+		}
+		offset += 6
+
+		// (X - 2) bytes to hold the puzzle text:
+		puzzleLength := int(binary.LittleEndian.Uint16(pData[offset:]))
+		p.TextBytes = pData[offset : offset+puzzleLength]
+
+		offset += puzzleLength
+
+		// 2 bytes for the puzzle Item: either this is required to complete the thing,
+		// or it's given as a reward for a different thing?
+		// Might rename these, later
+		p.LockItemId = int(binary.LittleEndian.Uint16(pData[offset:]))
+		p.RewardItemId = int(binary.LittleEndian.Uint16(pData[offset:]))
+		offset += 4
+
+		ret = append(ret, p)
+	}
+
+	return
+}
+
+func processItemList(iData []byte) (ret []ItemInfo) {
+	ret = make([]ItemInfo, 0)
+	// Each item entry is 26 bytes long
+	for i := 0; i < len(iData)-26; i += 26 {
+		iInfo := ItemInfo{}
+		if iInfo.Id == 65535 { // End of items section: we're out!
+			return
+		}
+		iInfo.Id = int(binary.LittleEndian.Uint16(iData[i:]))
+		// Trim the zeros from the end of the "line"
+		nameLength := 0
+		for j := 25; j > 1; j-- {
+			if iData[i+j] != 0 {
+				nameLength = j
+				break
+			}
+		}
+		iInfo.Name = string(iData[i+2 : i+1+nameLength])
+
+		ret = append(ret, iInfo)
+	}
+	return
+}
+
+func processCharList(cData []byte) (ret []CreatureInfo) {
+	ret = make([]CreatureInfo, 0)
+	// Each creature entry is 84 bytes long
+	for i := 0; i < len(cData)-84; i += 84 {
+		cInfo := CreatureInfo{}
+		cInfo.Id = int(binary.LittleEndian.Uint16(cData[i:]))
+		cName := ""
+		offset := 10
+		for cData[offset+i] != 0x00 {
+			cName += string(cData[offset+i])
+			offset += 1
+		}
+		cInfo.Name = cName
+
+		ret = append(ret, cInfo)
+	}
+	return
 }
 
 func reverse(str string) (result string) {

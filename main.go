@@ -10,6 +10,9 @@ const yodaFile = "YODESK.DTA"
 
 var tileInfo []TileInfo
 var zoneInfo []ZoneInfo
+var itemInfo []ItemInfo
+var puzzleInfo []PuzzleInfo
+var creatureInfo []CreatureInfo
 
 func main() {
 	// Process the input file, grab tiles and maps
@@ -17,7 +20,7 @@ func main() {
 	//  - some more tweaking to not repeat this step too many times
 	//  - action scripts
 	//  - worldgen rules?
-	tileInfo, zoneInfo = processYodaFile(yodaFile)
+	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo = processYodaFile(yodaFile)
 
 	// Init the game...
 	g := NewGame(tileInfo, zoneInfo)

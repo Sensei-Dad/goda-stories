@@ -17,26 +17,32 @@ type Game struct {
 	World         GameWorld
 	ECSManager    *ecs.Manager
 	ECSTags       map[string]ecs.Tag
+	tick          int64
 }
 
 var blankTile = ebiten.NewImage(tileWidth, tileHeight)
 var tiles = []*ebiten.Image{}
 
 func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
+	// TODO: Distinguish between "init game" and "new game"
 	tiles = LoadAllTiles(tInfo)
 	g := &Game{}
 	g.World = NewWorld()
 
 	// ECS!
-	mgr, tags := InitializeWorld()
+	mgr, tags := g.InitializeWorld()
 	g.ECSManager = mgr
 	g.ECSTags = tags
+
+	g.tick = 0
 
 	return g
 }
 
 func (g *Game) Update() error {
+	g.tick++
 	ProcessInput(g)
+	// TODO: process Creature movement
 	return nil
 }
 
@@ -59,8 +65,4 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func (g *Game) Layout(w, h int) (int, int) {
 	// for now, return the map with nothing else around it
 	return (ViewportWidth * tileWidth), (ViewportHeight * tileHeight)
-}
-
-func GetZone(zoneNum int) (z ZoneInfo) {
-	return zoneInfo[zoneNum]
 }

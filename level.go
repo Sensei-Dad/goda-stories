@@ -10,6 +10,9 @@ import (
 
 type MapScreen struct {
 	Layers MapLayers
+	Items  []ItemInfo
+	// Creatures []CreatureInfo
+	// PushBlocks []PushBlockInfo
 }
 
 type MapTile struct {
@@ -59,7 +62,7 @@ func (ms *MapScreen) GetTileImage(tNum int) *ebiten.Image {
 }
 
 func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
-	z := GetZone(zone)
+	z := zoneInfo[zone]
 	ret.Tiles = make([]MapTile, len(z.LayerData.Terrain))
 	ret.Width = z.Width
 	ret.Height = z.Height
@@ -69,10 +72,38 @@ func (ms *MapScreen) LoadMap(zone int) (ret MapLayers) {
 		for x := 0; x < z.Width; x++ {
 			// Assemble the map from layer data
 			// TODO: account for entities (pushblocks, creatures, etc.)
+			// TODO: load triggers into ECS
 			tIndex := (y * z.Width) + x
 			terNum := z.LayerData.Terrain[tIndex]
 			objNum := z.LayerData.Objects[tIndex]
 			ovrNum := z.LayerData.Overlay[tIndex]
+
+			// Check for objects
+			for _, item := range itemInfo {
+				// If it's an object, remove it from the map and save its coordinates
+				if terNum == item.Id {
+					terNum = 65535 // indicates a blank tile for the map rendering
+					thing := item
+					thing.MapX = x
+					thing.MapY = y
+					ms.Items = append(ms.Items, thing)
+				}
+				if objNum == item.Id {
+					objNum = 65535
+					thing := item
+					thing.MapX = x
+					thing.MapY = y
+					ms.Items = append(ms.Items, thing)
+				}
+				if ovrNum == item.Id {
+					ovrNum = 65535
+					thing := item
+					thing.MapX = x
+					thing.MapY = y
+					ms.Items = append(ms.Items, thing)
+				}
+			}
+
 			tile := MapTile{
 				IsWalkable:   CheckIsWalkable(objNum),
 				TerrainImage: ms.GetTileImage(terNum),

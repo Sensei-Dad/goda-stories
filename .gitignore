@@ -5,6 +5,12 @@ assets/text/*.html
 assets/test
 assets/test/*
 data/YODESK.DTA
+data/IPUZ*
+data/TNAM*
+data/PUZ2*
+data/CHAR*
+data/ICHA*
+data/IZON*
 goda-stories
 out.txt
 reset.sh

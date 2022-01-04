@@ -1,12 +1,13 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/bytearena/ecs"
 )
 
-// Global components
-var position *ecs.Component
-var renderable *ecs.Component
+// Global vars
+var playerSpeed int
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
@@ -42,35 +43,69 @@ func (gw *GameWorld) GetScreen() MapScreen {
 	return gw.Maps[gw.CurrentMap]
 }
 
-func InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
+func (g *Game) AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
+	// Add a creature to the entity pool
+	crtr := g.ECSManager.NewComponent()
+
+	fmt.Printf("[ECSMgr] Adding creature: %s", cInfo.Name)
+
+	return g.ECSManager.NewEntity().
+		AddComponent(crtr, &Creature{
+			Name:   cInfo.Name,
+			State:  Standing,
+			Facing: Down,
+		}).
+		AddComponent(renderableComp, &Renderable{
+			Image: tiles[2037], // ALL JAWAS, ALL THE TIME
+		}).
+		AddComponent(positionComp, &Position{
+			X: x,
+			Y: y,
+		})
+}
+
+func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	// Initialize the world via the ECS
 	tags := make(map[string]ecs.Tag)
 	manager := ecs.NewManager()
 
-	// Make stuff!
+	// Make the global components and add the Player
 	player := manager.NewComponent()
-	// TODO: Suss out where Luke's sprites are => create animations
-	playerImg := tiles[799]
-	position = manager.NewComponent()
-	renderable = manager.NewComponent()
+	creatureComp = manager.NewComponent()
+	renderableComp = manager.NewComponent()
 	movable := manager.NewComponent()
+	positionComp = manager.NewComponent()
+
+	playerSpeed = 1
 
 	manager.NewEntity().
-		AddComponent(player, Player{}).
-		AddComponent(renderable, Renderable{
-			Image: playerImg,
+		AddComponent(player, &Player{
+			Speed: playerSpeed,
 		}).
-		AddComponent(movable, Movable{}).
-		AddComponent(position, &Position{
+		AddComponent(creatureComp, &Creature{
+			Name:   creatureInfo[0].Name,
+			State:  Standing,
+			Facing: Down,
+		}).
+		AddComponent(renderableComp, &Renderable{
+			Image: tiles[799], // TODO: Suss out where Luke's sprites are => create animations
+		}).
+		AddComponent(movable, &Movable{}).
+		AddComponent(positionComp, &Position{
 			X: 4,
 			Y: 7,
 		})
 
-	players := ecs.BuildTag(player, position)
+	players := ecs.BuildTag(player, creatureComp, positionComp)
 	tags["players"] = players
+	playerView = manager.CreateView(players)
 
-	renderables := ecs.BuildTag(renderable, position)
+	renderables := ecs.BuildTag(renderableComp, positionComp)
 	tags["renderables"] = renderables
+	drawView = manager.CreateView(renderables)
+
+	creatures := ecs.BuildTag(creatureComp, positionComp)
+	tags["creatures"] = creatures
 
 	return manager, tags
 }
