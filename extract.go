@@ -11,7 +11,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghostiam/binstruct"
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type ZoneInfo struct {
@@ -65,7 +64,7 @@ type ItemInfo struct {
 type CreatureInfo struct {
 	Id     int
 	Name   string
-	Images map[string]*ebiten.Image
+	Images map[CardinalDirection]int
 }
 
 func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []PuzzleInfo, []CreatureInfo) {
@@ -489,6 +488,8 @@ func processCharList(cData []byte) (ret []CreatureInfo) {
 	for i := 0; i < len(cData)-84; i += 84 {
 		cInfo := CreatureInfo{}
 		cInfo.Id = int(binary.LittleEndian.Uint16(cData[i:]))
+
+		// Name starts at 10 and ends at the first 0
 		cName := ""
 		offset := 10
 		for cData[offset+i] != 0x00 {
@@ -496,6 +497,18 @@ func processCharList(cData []byte) (ret []CreatureInfo) {
 			offset += 1
 		}
 		cInfo.Name = cName
+
+		// These all appear to be in the same spots
+		img := make(map[CardinalDirection]int)
+		img[UpLeft] = int(binary.LittleEndian.Uint16(cData[i+36:]))
+		img[DownRight] = int(binary.LittleEndian.Uint16(cData[i+38:]))
+		img[Up] = int(binary.LittleEndian.Uint16(cData[i+40:]))
+		img[Left] = int(binary.LittleEndian.Uint16(cData[i+42:]))
+		img[DownLeft] = int(binary.LittleEndian.Uint16(cData[i+44:]))
+		img[UpRight] = int(binary.LittleEndian.Uint16(cData[i+46:]))
+		img[Right] = int(binary.LittleEndian.Uint16(cData[i+48:]))
+		img[Down] = int(binary.LittleEndian.Uint16(cData[i+50:]))
+		cInfo.Images = img
 
 		ret = append(ret, cInfo)
 	}

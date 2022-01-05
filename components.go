@@ -52,9 +52,10 @@ type Player struct {
 }
 
 type Creature struct {
-	Name   string
-	State  CreatureState
-	Facing CardinalDirection
+	Name       string
+	State      CreatureState
+	Facing     CardinalDirection
+	CreatureId int
 }
 
 type PlayerInventory struct {

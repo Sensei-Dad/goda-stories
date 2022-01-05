@@ -93,9 +93,10 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	manager.NewEntity().
 		AddComponent(player, &Player{}).
 		AddComponent(creatureComp, &Creature{
-			Name:   creatureInfo[0].Name,
-			State:  Standing,
-			Facing: Down,
+			Name:       creatureInfo[0].Name,
+			State:      Standing,
+			Facing:     Down,
+			CreatureId: 0,
 		}).
 		AddComponent(renderableComp, &Renderable{
 			Image:  tiles[799], // TODO: Suss out where Luke's sprites are => create animations
@@ -119,7 +120,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	tags["players"] = players
 	playerView = manager.CreateView(players)
 
-	renderables := ecs.BuildTag(renderableComp)
+	renderables := ecs.BuildTag(creatureComp, renderableComp)
 	tags["renderables"] = renderables
 	drawView = manager.CreateView(renderables)
 
