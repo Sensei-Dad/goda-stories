@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/bytearena/ecs"
 )
@@ -16,52 +17,57 @@ func (g *Game) ProcessMovement() {
 
 		ml := g.World.GetLayers()
 
-		deltaX := pos.X - moves.OldX
-		deltaY := pos.Y - moves.OldY
+		if crtr.State == Walking { // Creature wants to start a move
+			newX := pos.X + moves.Direction.DeltaX
+			newY := pos.Y + moves.Direction.DeltaY
 
-		if crtr.State == Walking && deltaX == 0 && deltaY == 0 { // Thing is not moving, or has finished a move
-			crtr.State = Standing
-		}
-		if crtr.State == Standing && (deltaX != 0 || deltaY != 0) { // Creature wants to move
-			crtr.State = Walking // Do this to avoid repeated inputs
-			// Move to that tile if nobody else wants it
-			thingCanMove := ml.CanMove(pos.X, pos.Y)
+			// Clear the input attempt
+			crtr.State = InMotion
+			thingCanMove := ml.CanMove(newX, newY) // Check the map first
 			for _, thing := range collideView.Get() {
-				// Check all the collidables for common destinations, except itself
+				// Check all the collidables for common destinations, except for itself
 				// This is ugly, but manageable since we're only ever checking against one pool of stuff
 				pos2 := thing.Components[positionComp].(*Position)
 				col2 := thing.Components[collideComp].(*Collidable)
-				if pos2.X == pos.X && pos2.Y == pos.Y && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
+				if pos2.X == newX && pos2.Y == newY && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
 					fmt.Println("Found blocking Entity")
 					thingCanMove = false
 				}
 			}
-			if !thingCanMove {
-				// cancel the move
+			if thingCanMove {
+				// Yes, start the move
+				fmt.Printf("Starting walk: %s walking from (%d,%d) to (%d,%d)\n", crtr.Name, pos.X, pos.Y, newX, newY)
+				pos.X = newX
+				pos.Y = newY
+			} else {
+				// No, you can't move there
 				pos.X = moves.OldX
 				pos.Y = moves.OldY
+				crtr.State = Standing
+				moves.Direction = NoMove
+				fmt.Printf("Starting walk: %s wants to go from (%d,%d) to (%d,%d), but it's blocked\n", crtr.Name, pos.X, pos.Y, newX, newY)
 			}
 		}
-		if crtr.State == Walking {
+		if crtr.State == InMotion { // Move in-progress
 			// Nudge tile closer to its destination, according to its speed
 			// TODO: Set a global game speed
-			nudgeX := (float64(deltaX) * moves.Speed) / float64(tileWidth)
-			nudgeY := (float64(deltaY) * moves.Speed) / float64(tileHeight)
-
+			nudgeX := (float64(pos.X-moves.OldX) * moves.Speed)
+			nudgeY := (float64(pos.Y-moves.OldY) * moves.Speed)
 			img.PixelX += nudgeX
 			img.PixelY += nudgeY
 
-			// Detect how far it is to our destination
-			// These should approach zero as we get toward it
-			distanceX := (float64(pos.X*tileWidth) - img.PixelX) * float64(deltaX)
-			distanceY := (float64(pos.Y*tileHeight) - img.PixelY) * float64(deltaY)
-			if distanceX <= 0 && distanceY <= 0 {
-				// Set the values to be exactly on the tile
+			// Detect how far we've left in the move
+			distanceX := math.Abs(float64(pos.X*tileWidth) - img.PixelX)
+			distanceY := math.Abs(float64(pos.Y*tileHeight) - img.PixelY)
+
+			// Once we've got less than one move left, the move is completed
+			if distanceX <= moves.Speed && distanceY <= moves.Speed {
 				fmt.Printf("Finished walk: %s went from (%d,%d) to (%d,%d)\n", crtr.Name, moves.OldX, moves.OldY, pos.X, pos.Y)
 				img.PixelX = float64(pos.X * tileWidth)
 				img.PixelY = float64(pos.Y * tileHeight)
 				moves.OldX = pos.X
 				moves.OldY = pos.Y
+				crtr.State = Standing
 			}
 		}
 	}

@@ -88,7 +88,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	// TODO: actually try to place the player on a movable tile
 	playerX := 4
 	playerY := 7
-	playerSpeed = 60
+	playerSpeed = 2
 
 	manager.NewEntity().
 		AddComponent(player, &Player{}).
@@ -103,9 +103,10 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 			PixelY: float64(playerY * tileHeight),
 		}).
 		AddComponent(movementComp, &Movable{
-			OldX:  4,
-			OldY:  7,
-			Speed: playerSpeed,
+			OldX:      4,
+			OldY:      7,
+			Speed:     playerSpeed,
+			Direction: NoMove,
 		}).
 		AddComponent(positionComp, &Position{
 			X: 4,
@@ -114,7 +115,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 		IsBlocking: true,
 	})
 
-	players := ecs.BuildTag(player, creatureComp, positionComp)
+	players := ecs.BuildTag(player, movementComp, creatureComp, positionComp)
 	tags["players"] = players
 	playerView = manager.CreateView(players)
 

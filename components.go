@@ -18,25 +18,35 @@ var movementComp *ecs.Component
 var collideComp *ecs.Component
 
 type CreatureState string
-type CreatureDirection string
 
 const (
 	Standing  CreatureState = "Standing"
 	Walking   CreatureState = "Walking"
+	InMotion  CreatureState = "InMotion"
 	Attacking CreatureState = "Attacking"
 	Dragging  CreatureState = "Dragging"
 )
 
-const (
-	Up        CreatureDirection = "Up"
-	Down      CreatureDirection = "Down"
-	Left      CreatureDirection = "Left"
-	Right     CreatureDirection = "Right"
-	UpLeft    CreatureDirection = "UpLeft"
-	DownLeft  CreatureDirection = "DownLeft"
-	UpRight   CreatureDirection = "UpRight"
-	DownRight CreatureDirection = "DownRight"
-)
+type CardinalDirection struct {
+	Name   string
+	DeltaX int
+	DeltaY int
+}
+
+var Up CardinalDirection = CardinalDirection{Name: "Up", DeltaX: 0, DeltaY: -1}
+var Down CardinalDirection = CardinalDirection{Name: "Down", DeltaX: 0, DeltaY: 1}
+var Left CardinalDirection = CardinalDirection{Name: "Left", DeltaX: -1, DeltaY: 0}
+var Right CardinalDirection = CardinalDirection{Name: "Right", DeltaX: 1, DeltaY: 0}
+var UpLeft CardinalDirection = CardinalDirection{Name: "UpLeft", DeltaX: -1, DeltaY: -1}
+var DownLeft CardinalDirection = CardinalDirection{Name: "DownLeft", DeltaX: -1, DeltaY: 1}
+var UpRight CardinalDirection = CardinalDirection{Name: "UpRight", DeltaX: 1, DeltaY: -1}
+var DownRight CardinalDirection = CardinalDirection{Name: "DownRight", DeltaX: 1, DeltaY: 1}
+var NoMove CardinalDirection = CardinalDirection{Name: "None", DeltaX: 0, DeltaY: 0}
+
+func (d *CardinalDirection) NoDirection() bool {
+	// Return true if movement is zero
+	return (d.DeltaX == 0 && d.DeltaY == 0)
+}
 
 type Player struct {
 }
@@ -44,7 +54,7 @@ type Player struct {
 type Creature struct {
 	Name   string
 	State  CreatureState
-	Facing CreatureDirection
+	Facing CardinalDirection
 }
 
 type PlayerInventory struct {
@@ -75,8 +85,10 @@ type Collidable struct {
 	IsBlocking bool
 }
 
+// Movables can move around the map, in a pixel-wise fashion
 type Movable struct {
-	OldX  int
-	OldY  int
-	Speed float64
+	OldX      int
+	OldY      int
+	Speed     float64
+	Direction CardinalDirection
 }

@@ -10,7 +10,7 @@ func ProcessRenderables(g *Game, ml MapLayers, screen *ebiten.Image) {
 		img := result.Components[renderableComp].(*Renderable)
 
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(img.PixelX), float64(img.PixelY))
+		op.GeoM.Translate(img.PixelX, img.PixelY)
 		screen.DrawImage(img.Image, op)
 	}
 }

@@ -65,7 +65,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Show player stuff
 	for _, result := range playerView.Get() {
 		crtr := result.Components[creatureComp].(*Creature)
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("State:  %s\nFacing: %s", crtr.State, crtr.Facing))
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("State:  %s\nFacing: %s", crtr.State, crtr.Facing.Name))
 	}
 }
 
