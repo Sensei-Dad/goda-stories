@@ -17,15 +17,17 @@ func (g *Game) ProcessMovement() {
 
 		ml := g.World.GetLayers()
 
-		if crtr.State == Walking { // Creature wants to start a move
+		// Creature wants to start a move, and isn't
+		// currently in the middle of another one
+		if !crtr.InMotion && !moves.Direction.NoDirection() {
 			newX := pos.X + moves.Direction.DeltaX
 			newY := pos.Y + moves.Direction.DeltaY
 
-			// Clear the input attempt
-			crtr.State = InMotion
-			thingCanMove := ml.CanMove(newX, newY) // Check the map first
+			// Check the map tile first
+			thingCanMove := ml.CanMove(newX, newY)
+
+			// Check all the collidables for common destinations, except for itself
 			for _, thing := range collideView.Get() {
-				// Check all the collidables for common destinations, except for itself
 				// This is ugly, but manageable since we're only ever checking against one pool of stuff
 				pos2 := thing.Components[positionComp].(*Position)
 				col2 := thing.Components[collideComp].(*Collidable)
@@ -34,21 +36,25 @@ func (g *Game) ProcessMovement() {
 					thingCanMove = false
 				}
 			}
+
 			if thingCanMove {
 				// Yes, start the move
+				crtr.InMotion = true
+				crtr.State = Walking
 				fmt.Printf("Starting walk: %s walking from (%d,%d) to (%d,%d)\n", crtr.Name, pos.X, pos.Y, newX, newY)
 				pos.X = newX
 				pos.Y = newY
 			} else {
 				// No, you can't move there
+				crtr.InMotion = false
+				crtr.State = Standing
 				pos.X = moves.OldX
 				pos.Y = moves.OldY
-				crtr.State = Standing
 				moves.Direction = NoMove
 				fmt.Printf("Starting walk: %s wants to go from (%d,%d) to (%d,%d), but it's blocked\n", crtr.Name, pos.X, pos.Y, newX, newY)
 			}
 		}
-		if crtr.State == InMotion { // Move in-progress
+		if crtr.InMotion { // Move in-progress
 			// Nudge tile closer to its destination, according to its speed
 			// TODO: Set a global game speed
 			nudgeX := (float64(pos.X-moves.OldX) * moves.Speed)
@@ -67,6 +73,7 @@ func (g *Game) ProcessMovement() {
 				img.PixelY = float64(pos.Y * tileHeight)
 				moves.OldX = pos.X
 				moves.OldY = pos.Y
+				crtr.InMotion = false
 				crtr.State = Standing
 			}
 		}

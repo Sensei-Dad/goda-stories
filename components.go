@@ -11,6 +11,7 @@ var moveView *ecs.View
 var drawView *ecs.View
 var collideView *ecs.View
 
+var playerComp *ecs.Component
 var positionComp *ecs.Component
 var renderableComp *ecs.Component
 var creatureComp *ecs.Component
@@ -48,13 +49,14 @@ func (d *CardinalDirection) NoDirection() bool {
 	return (d.DeltaX == 0 && d.DeltaY == 0)
 }
 
-type Player struct {
+type PlayerInput struct {
 }
 
 type Creature struct {
 	Name       string
 	State      CreatureState
 	Facing     CardinalDirection
+	InMotion   bool
 	CreatureId int
 }
 

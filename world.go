@@ -78,7 +78,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	manager := ecs.NewManager()
 
 	// Make the global components and add the Player
-	player := manager.NewComponent()
+	playerComp = manager.NewComponent()
 	creatureComp = manager.NewComponent()
 	renderableComp = manager.NewComponent()
 	movementComp = manager.NewComponent()
@@ -91,11 +91,12 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 	playerSpeed = 2
 
 	manager.NewEntity().
-		AddComponent(player, &Player{}).
+		AddComponent(playerComp, &PlayerInput{}).
 		AddComponent(creatureComp, &Creature{
 			Name:       creatureInfo[0].Name,
 			State:      Standing,
 			Facing:     Down,
+			InMotion:   false,
 			CreatureId: 0,
 		}).
 		AddComponent(renderableComp, &Renderable{
@@ -116,7 +117,7 @@ func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
 		IsBlocking: true,
 	})
 
-	players := ecs.BuildTag(player, movementComp, creatureComp, positionComp)
+	players := ecs.BuildTag(playerComp, movementComp, creatureComp, positionComp)
 	tags["players"] = players
 	playerView = manager.CreateView(players)
 

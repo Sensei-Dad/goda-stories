@@ -40,12 +40,14 @@ func (g *Game) ProcessInput() {
 		mov := result.Components[movementComp].(*Movable)
 		crtr := result.Components[creatureComp].(*Creature)
 
-		mov.Direction = dir
-
 		// Change facing and attempt a move, if we're not already moving
-		if crtr.State != InMotion && !dir.NoDirection() {
-			crtr.Facing = dir
-			crtr.State = Walking
+		if !crtr.InMotion {
+			if !dir.NoDirection() {
+				mov.Direction = dir
+				crtr.Facing = dir
+			} else {
+				crtr.State = Standing
+			}
 		}
 	}
 }
