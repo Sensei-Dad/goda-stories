@@ -20,10 +20,15 @@ func ProcessMovement(ms MapScreen) {
 		if !crtr.InMotion && !moves.Direction.NoDirection() {
 			newX := pos.X + moves.Direction.DeltaX
 			newY := pos.Y + moves.Direction.DeltaY
+			var thingCanMove bool
 
 			// Check the map tile first
-			newTile := ms.GetTileAt(newX, newY)
-			thingCanMove := newTile.IsWalkable
+			if ms.CoordsAreInBounds(newX, newY) {
+				newTile := ms.GetTileAt(newX, newY)
+				thingCanMove = newTile.IsWalkable
+			} else {
+				thingCanMove = false
+			}
 
 			// Check all the collidables for common destinations, except for itself
 			for _, thing := range collideView.Get() {
@@ -79,6 +84,14 @@ func ProcessMovement(ms MapScreen) {
 }
 
 // TODO: Update animation images
+func GetPlayerCoords() (X, Y float64) {
+	for _, result := range playerView.Get() {
+		img := result.Components[renderableComp].(*Renderable)
+		X = img.PixelX
+		Y = img.PixelY
+	}
+	return
+}
 
 func MoveCreature(crtr *ecs.QueryResult, newX, newY int) {
 	// Move the creature to the specified coords

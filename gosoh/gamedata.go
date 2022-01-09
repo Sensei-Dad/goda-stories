@@ -44,6 +44,9 @@ var NoMove CardinalDirection = CardinalDirection{Name: "None", DeltaX: 0, DeltaY
 var playerSpeed float64 = 2.0
 
 const ViewportWidth, ViewportHeight int = 10, 10
+
+// Distance from the viewport edge, in tiles, before the screen begins to scroll
+const ViewportBuffer int = 4
 const TileWidth, TileHeight int = 32, 32
 
 func (d *CardinalDirection) NoDirection() bool {

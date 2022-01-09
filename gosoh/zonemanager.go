@@ -56,7 +56,7 @@ func InitializeECS() {
 		IsBlocking: true,
 	})
 
-	players := ecs.BuildTag(playerComp, movementComp, creatureComp, positionComp)
+	players := ecs.BuildTag(playerComp, renderableComp, movementComp, creatureComp, positionComp)
 	ECSTags["players"] = players
 	playerView = ECSManager.CreateView(players)
 

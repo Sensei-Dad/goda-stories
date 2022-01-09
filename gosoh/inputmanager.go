@@ -54,19 +54,19 @@ func ProcessInput() {
 	}
 }
 
-func ShowDebugInfo(screen *ebiten.Image) {
+func ShowDebugInfo(screen *ebiten.Image, viewX, viewY float64) {
 	out := ""
-	for _, result := range playerView.Get() {
-		mov := result.Components[movementComp].(*Movable)
-		crtr := result.Components[creatureComp].(*Creature)
-		out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
-		out += fmt.Sprintf("InMotion:  %t\n", crtr.InMotion)
-		out += fmt.Sprintf("Direction:  %s\n", mov.Direction.Name)
-	}
+	out += fmt.Sprintf("Viewport: (%0.2f, %0.2f)\n", viewX, viewY)
+	// for _, result := range playerView.Get() {
+	// 	mov := result.Components[movementComp].(*Movable)
+	// 	crtr := result.Components[creatureComp].(*Creature)
+	// 	out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
+	// 	out += fmt.Sprintf("InMotion:  %t\n", crtr.InMotion)
+	// 	out += fmt.Sprintf("Direction:  %s\n", mov.Direction.Name)
+	// }
 	for _, result := range moveView.Get() {
 		img := result.Components[renderableComp].(*Renderable)
-		out += fmt.Sprintf("  PixelX: %.2f", img.PixelX)
-		out += fmt.Sprintf("  PixelY: %.2f", img.PixelY)
+		out += fmt.Sprintf("Player: (%0.2f, %0.2f)\n", img.PixelX, img.PixelY)
 	}
 	ebitenutil.DebugPrint(screen, out)
 }

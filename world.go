@@ -40,14 +40,14 @@ func NewWorld() *GameWorld {
 func (gw *GameWorld) DrawTerrain(screen *ebiten.Image, vp ViewCoords) {
 	ms := gw.Maps[vp.CurrentMap]
 	// ms.PrintMap()
-	for y := 0; y < vp.Height; y++ {
-		for x := 0; x < vp.Width; x++ {
+	for y := 0; y < ms.Height; y++ {
+		for x := 0; x < ms.Width; x++ {
 			// Make sure coords are within the map bounds
 			mapX := int(math.Round(vp.X)) + x
 			mapY := int(math.Round(vp.Y)) + y
 
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
+			op.GeoM.Translate(vp.X+float64(x*gosoh.TileWidth), vp.Y+float64(y*gosoh.TileHeight))
 			var img *ebiten.Image
 
 			if ms.CoordsAreInBounds(mapX, mapY) {
