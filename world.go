@@ -1,140 +1,119 @@
 package main
 
 import (
-	"fmt"
+	"math"
 
-	"github.com/bytearena/ecs"
+	"github.com/MasterShizzle/goda-stories/gosoh"
+	"github.com/hajimehoshi/ebiten/v2"
 )
-
-// Global vars
-var playerSpeed float64
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
-	Name       string
-	Maps       []MapScreen
+	Name string
+	Maps []gosoh.MapScreen
+}
+
+type ViewCoords struct {
+	X          float64
+	Y          float64
+	Width      int
+	Height     int
 	CurrentMap int
 }
 
-func NewWorld() GameWorld {
+func NewWorld() *GameWorld {
 	// For now, choose a random screen from those available and start there
 	// TODO: actual worldgen
-	msNum := RandomInt(len(zoneInfo))
-	ms := NewMapScreen(msNum)
-
-	maps := make([]MapScreen, 0)
-	maps = append(maps, ms)
 	gw := GameWorld{
-		Name:       "Goda Stories",
-		Maps:       maps,
-		CurrentMap: 0,
+		Name: "Goda Stories",
 	}
+	zoneNum := gosoh.RandomInt(len(gosoh.Zones))
+	gw.Maps = make([]gosoh.MapScreen, 0)
+	ms := gosoh.NewMapScreen(zoneNum)
 
-	return gw
+	gw.Maps = append(gw.Maps, ms)
+
+	return &gw
 }
 
-func (gw *GameWorld) GetLayers() MapLayers {
-	// return the map of whatever the current level is
-	return gw.Maps[gw.CurrentMap].Layers
+// Render the Terrain layer, which goes on the bottom
+func (gw *GameWorld) DrawTerrain(screen *ebiten.Image, vp ViewCoords) {
+	ms := gw.Maps[vp.CurrentMap]
+	// ms.PrintMap()
+	for y := 0; y < vp.Height; y++ {
+		for x := 0; x < vp.Width; x++ {
+			// Make sure coords are within the map bounds
+			mapX := int(math.Round(vp.X)) + x
+			mapY := int(math.Round(vp.Y)) + y
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
+			var img *ebiten.Image
+
+			if ms.CoordsAreInBounds(mapX, mapY) {
+				tile := ms.GetTileAt(mapX, mapY)
+				img = gosoh.GetTileImage(tile.TerrainImage)
+			} else {
+				// If the tile isn't on the map, we don't need to do anything
+				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
+				img = gosoh.BlankTile
+			}
+
+			screen.DrawImage(img, op)
+		}
+	}
 }
 
-func (gw *GameWorld) GetScreen() MapScreen {
-	// return the current MapScreen
-	return gw.Maps[gw.CurrentMap]
+func (gw *GameWorld) DrawObjects(screen *ebiten.Image, vp ViewCoords) {
+	ms := gw.Maps[vp.CurrentMap]
+	// ms.PrintMap()
+	for y := 0; y < vp.Height; y++ {
+		for x := 0; x < vp.Width; x++ {
+			// Make sure coords are within the map bounds
+			mapX := int(math.Round(vp.X)) + x
+			mapY := int(math.Round(vp.Y)) + y
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
+			var img *ebiten.Image
+
+			if ms.CoordsAreInBounds(mapX, mapY) {
+				tile := ms.GetTileAt(mapX, mapY)
+				img = gosoh.GetTileImage(tile.ObjectsImage)
+			} else {
+				// If the tile isn't on the map, we don't need to do anything
+				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
+				img = gosoh.BlankTile
+			}
+
+			screen.DrawImage(img, op)
+		}
+	}
 }
 
-func (g *Game) AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
-	// Add a creature to the entity pool
-	crtr := g.ECSManager.NewComponent()
+func (gw *GameWorld) DrawOverlay(screen *ebiten.Image, vp ViewCoords) {
+	ms := gw.Maps[vp.CurrentMap]
+	// ms.PrintMap()
+	for y := 0; y < vp.Height; y++ {
+		for x := 0; x < vp.Width; x++ {
+			// Make sure coords are within the map bounds
+			mapX := int(math.Round(vp.X)) + x
+			mapY := int(math.Round(vp.Y)) + y
 
-	fmt.Printf("[ECSMgr] Adding creature: %s", cInfo.Name)
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
+			var img *ebiten.Image
 
-	return g.ECSManager.NewEntity().
-		AddComponent(crtr, &Creature{
-			Name:   cInfo.Name,
-			State:  Standing,
-			Facing: Down,
-		}).
-		AddComponent(renderableComp, &Renderable{
-			Image: tiles[2037], // ALL JAWAS, ALL THE TIME
-		}).
-		AddComponent(positionComp, &Position{
-			X: x,
-			Y: y,
-		}).
-		AddComponent(movementComp, &Movable{
-			OldX:  x,
-			OldY:  y,
-			Speed: playerSpeed,
-		}).
-		AddComponent(collideComp, &Collidable{
-			IsBlocking: true,
-		})
-}
+			if ms.CoordsAreInBounds(mapX, mapY) {
+				tile := ms.GetTileAt(mapX, mapY)
+				img = gosoh.GetTileImage(tile.OverlayImage)
+			} else {
+				// If the tile isn't on the map, we don't need to do anything
+				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
+				img = gosoh.BlankTile
+			}
 
-func (g *Game) InitializeWorld() (*ecs.Manager, map[string]ecs.Tag) {
-	// Initialize the world via the ECS
-	tags := make(map[string]ecs.Tag)
-	manager := ecs.NewManager()
-
-	// Make the global components and add the Player
-	playerComp = manager.NewComponent()
-	creatureComp = manager.NewComponent()
-	renderableComp = manager.NewComponent()
-	movementComp = manager.NewComponent()
-	positionComp = manager.NewComponent()
-	collideComp = manager.NewComponent()
-
-	// TODO: actually try to place the player on a movable tile
-	playerX := 4
-	playerY := 7
-	playerSpeed = 2
-
-	manager.NewEntity().
-		AddComponent(playerComp, &PlayerInput{}).
-		AddComponent(creatureComp, &Creature{
-			Name:       creatureInfo[0].Name,
-			State:      Standing,
-			Facing:     Down,
-			InMotion:   false,
-			CreatureId: 0,
-		}).
-		AddComponent(renderableComp, &Renderable{
-			Image:  tiles[799], // TODO: Suss out where Luke's sprites are => create animations
-			PixelX: float64(playerX * tileWidth),
-			PixelY: float64(playerY * tileHeight),
-		}).
-		AddComponent(movementComp, &Movable{
-			OldX:      4,
-			OldY:      7,
-			Speed:     playerSpeed,
-			Direction: NoMove,
-		}).
-		AddComponent(positionComp, &Position{
-			X: 4,
-			Y: 7,
-		}).AddComponent(collideComp, &Collidable{
-		IsBlocking: true,
-	})
-
-	players := ecs.BuildTag(playerComp, movementComp, creatureComp, positionComp)
-	tags["players"] = players
-	playerView = manager.CreateView(players)
-
-	renderables := ecs.BuildTag(creatureComp, renderableComp)
-	tags["renderables"] = renderables
-	drawView = manager.CreateView(renderables)
-
-	creatures := ecs.BuildTag(creatureComp, positionComp)
-	tags["creatures"] = creatures
-
-	movables := ecs.BuildTag(movementComp, positionComp, creatureComp, renderableComp)
-	tags["movables"] = movables
-	moveView = manager.CreateView(movables)
-
-	collidables := ecs.BuildTag(collideComp, positionComp)
-	tags["collidables"] = collidables
-	collideView = manager.CreateView(collidables)
-
-	return manager, tags
+			screen.DrawImage(img, op)
+		}
+	}
 }

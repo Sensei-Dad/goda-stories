@@ -8,6 +8,9 @@ import (
 	"image/png"
 	"log"
 	"os"
+
+	"github.com/MasterShizzle/goda-stories/gosoh"
+	"github.com/davecgh/go-spew/spew"
 )
 
 const tileInfoFile = "assets/text/tileInfo.txt"
@@ -72,7 +75,16 @@ const htmlStarter string = `<!DOCTYPE html>
 <h1>Yoda Stories Map Info</h1>
 `
 
-func getZoneHTML(zone ZoneInfo) (ret string) {
+func dumpToFile(filepath string, foo ...interface{}) error {
+	// Create the output file
+	file, err := os.Create(filepath)
+
+	spew.Fdump(file, foo)
+	fmt.Printf("[dumpToFile] Saved to file: %s\n", filepath)
+	return err
+}
+
+func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	mapName := "map_" + fmt.Sprintf("%03d", zone.Id)
 	// For formatting purposes, stop at 5 maps
 	// if zone.Id > 5 {
@@ -143,8 +155,8 @@ func getHTMLTableFromMap(zone []int, zWidth, zHeight int) (ret string) {
 
 func getTileByNumber(tileNum int) (image.Image, error) {
 	// Get the tile from its .png image source, by number
-	blankTile := image.NewRGBA(image.Rect(0, 0, tileWidth, tileHeight))
-	draw.Draw(blankTile, image.Rect(0, 0, tileWidth, tileHeight), image.Transparent, image.Pt(0, 0), draw.Src)
+	blankTile := image.NewRGBA(image.Rect(0, 0, gosoh.TileWidth, gosoh.TileHeight))
+	draw.Draw(blankTile, image.Rect(0, 0, gosoh.TileWidth, gosoh.TileHeight), image.Transparent, image.Pt(0, 0), draw.Src)
 	filePath := "assets/tiles/tile_" + fmt.Sprintf("%04d", tileNum) + ".png"
 	if tileNum == 65535 { // return a transparent tile
 		return blankTile, nil
@@ -158,9 +170,9 @@ func getTileByNumber(tileNum int) (image.Image, error) {
 	return image, err
 }
 
-func saveMapToPNG(mapPath string, zone ZoneInfo) error {
+func saveMapToPNG(mapPath string, zone gosoh.ZoneInfo) error {
 	// Make a blank map and fill with black
-	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*tileWidth, zone.Height*tileHeight))
+	mapImage := image.NewRGBA(image.Rect(0, 0, zone.Width*gosoh.TileWidth, zone.Height*gosoh.TileHeight))
 	draw.Draw(mapImage, mapImage.Bounds(), image.Black, image.Black.Bounds().Max, draw.Src)
 
 	// Draw tiles
@@ -180,8 +192,8 @@ func saveMapToPNG(mapPath string, zone ZoneInfo) error {
 			log.Fatal(err)
 		}
 
-		x := (i % zone.Width) * tileWidth
-		y := (i / zone.Height) * tileHeight
+		x := (i % zone.Width) * gosoh.TileWidth
+		y := (i / zone.Height) * gosoh.TileHeight
 
 		offset := image.Pt(x, y)
 
@@ -280,18 +292,18 @@ func saveByteSliceToPNG(tPath string, tData []byte) error {
 	}
 
 	// Make a blank image
-	tile := image.NewNRGBA(image.Rect(0, 0, tileWidth, tileHeight))
+	tile := image.NewNRGBA(image.Rect(0, 0, gosoh.TileWidth, gosoh.TileHeight))
 
 	// Set pixels
 	for j := 0; j < len(tData); j++ {
 		pixel := int(tData[j])
 		if pixel == 0 {
-			tile.Set(j%tileWidth, j/tileHeight, color.Transparent)
+			tile.Set(j%gosoh.TileWidth, j/gosoh.TileHeight, color.Transparent)
 		} else {
 			rVal := PaletteData[pixel*4+2]
 			gVal := PaletteData[pixel*4+1]
 			bVal := PaletteData[pixel*4+0]
-			tile.Set(j%tileWidth, j/tileHeight, color.NRGBA{
+			tile.Set(j%gosoh.TileWidth, j/gosoh.TileHeight, color.NRGBA{
 				R: rVal,
 				G: gVal,
 				B: bVal,

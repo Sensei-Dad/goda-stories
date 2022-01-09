@@ -1,12 +1,14 @@
-package main
+package gosoh
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-func (g *Game) ProcessInput() {
+func ProcessInput() {
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
 		// TODO: save/quit functions
 		os.Exit(0)
@@ -50,4 +52,21 @@ func (g *Game) ProcessInput() {
 			}
 		}
 	}
+}
+
+func ShowDebugInfo(screen *ebiten.Image) {
+	out := ""
+	for _, result := range playerView.Get() {
+		mov := result.Components[movementComp].(*Movable)
+		crtr := result.Components[creatureComp].(*Creature)
+		out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
+		out += fmt.Sprintf("InMotion:  %t\n", crtr.InMotion)
+		out += fmt.Sprintf("Direction:  %s\n", mov.Direction.Name)
+	}
+	for _, result := range moveView.Get() {
+		img := result.Components[renderableComp].(*Renderable)
+		out += fmt.Sprintf("  PixelX: %.2f", img.PixelX)
+		out += fmt.Sprintf("  PixelY: %.2f", img.PixelY)
+	}
+	ebitenutil.DebugPrint(screen, out)
 }

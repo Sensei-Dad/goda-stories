@@ -1,38 +1,42 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/bytearena/ecs"
+	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-const tileWidth, tileHeight = 32, 32 // Tile width and height, in pixels
-// const uiPadding = 5                  // Padding between UI elements, in pixels
-const ViewportWidth, ViewportHeight = 12, 12
-
 type Game struct {
-	CurrentScreen int
-	World         GameWorld
-	ECSManager    *ecs.Manager
-	ECSTags       map[string]ecs.Tag
-	tick          int64
+	World *GameWorld
+	Gui   *BitmapInterface
+	View  ViewCoords
+	tick  int64
 }
 
-var blankTile = ebiten.NewImage(tileWidth, tileHeight)
-var tiles = []*ebiten.Image{}
-
-func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
+func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo) *Game {
 	// TODO: Distinguish between "init game" and "new game"
-	tiles = LoadAllTiles(tInfo)
 	g := &Game{}
+	g.Gui = NewBitmapInterface("assets/font_16x20.png", 16, 20)
+
+	// TODO: Center viewport function
+	g.View = ViewCoords{
+		X:          0.0,
+		Y:          0.0,
+		Width:      gosoh.ViewportWidth,
+		Height:     gosoh.ViewportHeight,
+		CurrentMap: 0,
+	}
+
+	gosoh.LoadAllTiles(tileInfo)
+
+	gosoh.Zones = zoneInfo
+	gosoh.Items = itemInfo
+	gosoh.Puzzles = puzzleInfo
+	gosoh.Creatures = creatureInfo
+
 	g.World = NewWorld()
 
 	// ECS!
-	mgr, tags := g.InitializeWorld()
-	g.ECSManager = mgr
-	g.ECSTags = tags
+	gosoh.InitializeECS()
 
 	g.tick = 0
 
@@ -41,35 +45,30 @@ func NewGame(tInfo []TileInfo, zones []ZoneInfo) *Game {
 
 func (g *Game) Update() error {
 	// g.tick++
-	g.ProcessInput()
+	gosoh.ProcessInput()
 	// TODO: Handle AI, randomly move critters around, etc.
 	// ProcessCreatures(g)
-	g.ProcessMovement()
+	gosoh.ProcessMovement(g.World.Maps[g.View.CurrentMap])
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw each layer, starting at the bottom:
-	//     = Overlay =
-	//  ** Renderables **
-	//  ==   Objects   ==
-	// ===   Terrain   ===
-	layers := g.World.GetLayers()
-	layers.DrawLayer(Terrain, screen)
-	layers.DrawLayer(Objects, screen)
-	ProcessRenderables(g, layers, screen)
-	layers.DrawLayer(Overlay, screen)
+	// Draw each layer, starting at the bottom
+	g.World.DrawTerrain(screen, g.View)
+	g.World.DrawObjects(screen, g.View)
+	gosoh.ProcessRenderables(screen)
+	g.World.DrawOverlay(screen, g.View)
 
-	// Show FPS
-	// ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f", ebiten.CurrentTPS()))
+	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xff, G: 0x00, B: 0xff, A: 1})
+	// op := &ebiten.DrawImageOptions{}
+	// op.GeoM.Translate(10, 10)
+	// screen.DrawImage(splash, op)
+
 	// Show player stuff
-	for _, result := range playerView.Get() {
-		crtr := result.Components[creatureComp].(*Creature)
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("State:  %s\nFacing: %s", crtr.State, crtr.Facing.Name))
-	}
+	gosoh.ShowDebugInfo(screen)
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// for now, return the map with nothing else around it
-	return (ViewportWidth * tileWidth), (ViewportHeight * tileHeight)
+	return (g.View.Width * gosoh.TileWidth), (g.View.Height * gosoh.TileHeight)
 }

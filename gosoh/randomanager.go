@@ -1,4 +1,4 @@
-package main
+package gosoh
 
 import (
 	"crypto/rand"

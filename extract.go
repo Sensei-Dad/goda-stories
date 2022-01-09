@@ -9,68 +9,18 @@ import (
 	"log"
 	"os"
 
+	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghostiam/binstruct"
 )
 
-type ZoneInfo struct {
-	Id        int
-	Type      string
-	Width     int
-	Height    int
-	Flags     string
-	LayerData struct {
-		Terrain []int
-		Objects []int
-		Overlay []int
-	}
-	TileTriggers []TileTrigger
-	Izax         []byte
-	Izx2         []byte
-	Izx3         []byte
-	Izx4         []byte
-	Iact         [][]byte
-}
-
-type TileInfo struct {
-	// TODO: need to process flags in separate groups (TypeFlags, ItemFlags, etc...)?
-	Id         string
-	Flags      string
-	Type       string
-	IsWalkable bool
-}
-
-type TileTrigger struct {
-	Type string
-	X    int
-	Y    int
-	Arg  int
-}
-
-type PuzzleInfo struct {
-	Id           int
-	TextBytes    []byte
-	LockItemId   int
-	RewardItemId int
-}
-
-type ItemInfo struct {
-	Id   int
-	Name string
-	MapX int
-	MapY int
-}
-
-type CreatureInfo struct {
-	Id     int
-	Name   string
-	Images map[CardinalDirection]int
-}
-
-func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []PuzzleInfo, []CreatureInfo) {
+func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gosoh.ZoneInfo, []gosoh.ItemInfo, []gosoh.PuzzleInfo, []gosoh.CreatureInfo) {
 	yodaFilePath := "data/" + fileName
-	tileFlags := []TileInfo{}
-	zones := []ZoneInfo{}
+	outTiles := make([]gosoh.TileInfo, 0)
+	outZones := make([]gosoh.ZoneInfo, 0)
+	outItems := make([]gosoh.ItemInfo, 0)
+	outPuzzles := make([]gosoh.PuzzleInfo, 0)
+	outCreatures := make([]gosoh.CreatureInfo, 0)
 
 	file, err := os.Open(yodaFilePath)
 	if err != nil {
@@ -81,7 +31,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 	defer file.Close()
 	fmt.Printf("[%s] Opened file\n", fileName)
 
-	outputs := make(map[string]interface{})
+	numTiles := 0
 
 	// Parse the different sections
 	for {
@@ -98,9 +48,11 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 		fmt.Printf("[%s] Reading section: %s\n", fileName, section)
 		switch s := string(section); s {
 		case "VERS":
-			major, _ := reader.ReadUint16()
-			minor, _ := reader.ReadUint16()
-			outputs[s] = fmt.Sprint(int(major)) + "." + fmt.Sprint(int(minor))
+			_, _ = reader.ReadByte()
+			major, _ := reader.ReadByte()
+			_, _ = reader.ReadByte()
+			minor, _ := reader.ReadByte()
+			fmt.Printf("    Detected version: %d.%d\n", major, minor)
 		case "STUP", "SNDS", "CHWP", "CAUX":
 			// Basically, just skip all these sections
 			sectionLength, _ := reader.ReadUint32()
@@ -114,7 +66,6 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 			}
 		case "ZONE":
 			zoneCount, _ := reader.ReadUint16()
-			zones = make([]ZoneInfo, int(zoneCount))
 			for i := 0; i < int(zoneCount); i++ {
 				// dunno what this does
 				_, _ = reader.ReadUint16()
@@ -123,22 +74,22 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 
 				_, zoneData, _ := reader.ReadBytes(int(zoneLength))
 
-				zones[i] = processZoneData(zoneData, tileFlags)
+				zInfo := processZoneData(zoneData, outTiles)
+				outZones = append(outZones, zInfo)
 			}
-			outputs[s] = zones
 		case "TILE":
 			// Each tile has 4 bytes for the tile data, plus 32x32 px (0x400)
 			sectionLength, _ := reader.ReadUint32()
-			numTiles := int(sectionLength) / 0x404
-			tileFlags = make([]TileInfo, numTiles)
+			numTiles = int(sectionLength) / 0x404
 			skipped := 0
 
 			// Extract tile bits into images
 			for i := 0; i < numTiles; i++ {
 				// Pad number with leading zeroes for filename
-				tilename := "assets/tiles/tile_" + fmt.Sprintf("%04d", i) + ".png"
+				tilename := fmt.Sprintf("assets/tiles/tile_%04d.png", i)
 				flags, _ := reader.ReadUint32()
-				tileFlags[i] = processTileData(i, flags)
+				tData := processTileData(i, flags)
+				outTiles = append(outTiles, tData)
 
 				// Skip creating the tile image if it's already there
 				_, err := os.Stat(tilename)
@@ -158,12 +109,12 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 		case "PUZ2":
 			sectionLength, _ := reader.ReadUint32()
 			_, puzzleData, err := reader.ReadBytes(int(sectionLength))
-			puzzles := processPuzzleData(puzzleData)
+			puzzles := processPuzzleData(puzzleData, numTiles)
 			if err != nil {
 				fmt.Printf("Error reading section %s\n", s)
 				log.Fatal(err)
 			}
-			outputs[s] = puzzles
+			outPuzzles = puzzles
 		case "TNAM":
 			sectionLength, _ := reader.ReadUint32()
 			_, itemData, err := reader.ReadBytes(int(sectionLength))
@@ -172,7 +123,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 				fmt.Printf("Error reading section %s\n", s)
 				log.Fatal(err)
 			}
-			outputs[s] = items
+			outItems = items
 		case "CHAR":
 			sectionLength, _ := reader.ReadUint32()
 			_, itemData, err := reader.ReadBytes(int(sectionLength))
@@ -181,7 +132,7 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 				fmt.Printf("Error reading section %s\n", s)
 				log.Fatal(err)
 			}
-			outputs[s] = chars
+			outCreatures = chars
 		case "ENDF":
 			// Read whatever odd bytes are left?
 			_, err = reader.ReadAll()
@@ -194,39 +145,13 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 		}
 	}
 
-	// create various output files
-	tileInfo, err := os.Create(tileInfoFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	itInfo, err := os.Create(itemInfoFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	puzzInfo, err := os.Create(puzzleInfoFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	mapLayers, err := os.Create(mapInfoHtml)
-	if err != nil {
-		log.Fatal(err)
-	}
-	mapInfo, err := os.Create(mapInfoText)
-	if err != nil {
-		log.Fatal(err)
-	}
-	crtrInfo, err := os.Create(crtrInfoText)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// Save map info to HTML and images to PNGs
 	fmt.Printf("[%s] Stitching maps...\n", fileName)
-	numZones := len(outputs["ZONE"].([]ZoneInfo))
+	numZones := len(outZones)
 	skipped := 0
 	mapsHtml := htmlStarter
 
-	for zId, zData := range outputs["ZONE"].([]ZoneInfo) {
+	for zId, zData := range outZones {
 		mapNum := fmt.Sprintf("%03d", zId)
 		mapFilePath := "assets/maps/map_" + mapNum + ".png"
 
@@ -247,36 +172,46 @@ func processYodaFile(fileName string) ([]TileInfo, []ZoneInfo, []ItemInfo, []Puz
 	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
 	mapsHtml += "\n</body>\n</html>\n"
 
-	fmt.Printf("    Dumping output to %s...\n", tileInfoFile)
-	spew.Fdump(tileInfo, tileFlags)
-	fmt.Printf("    Dumping output to %s...\n", itemInfoFile)
-	spew.Fdump(itInfo, outputs["TNAM"].([]ItemInfo))
-	fmt.Printf("    Dumping output to %s...\n", puzzleInfoFile)
-	spew.Fdump(puzzInfo, outputs["PUZ2"].([]PuzzleInfo))
-	fmt.Printf("    Dumping output to %s...\n", mapInfoHtml)
-	spew.Fprint(mapLayers, mapsHtml)
-	fmt.Printf("    Dumping output to %s...\n", mapInfoText)
-	// Cut the layers here, so output is cleaner
-	shorterInfo := make([]ZoneInfo, len(zones))
-	for i, z := range zones {
-		zon := z
-		zon.LayerData.Terrain = nil
-		zon.LayerData.Objects = nil
-		zon.LayerData.Overlay = nil
-		shorterInfo[i] = zon
+	// create various output files
+	if dumpOutputs {
+		err = dumpToFile(tileInfoFile, outTiles)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(itemInfoFile, outItems)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(puzzleInfoFile, outPuzzles)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(mapInfoText, outZones)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(crtrInfoText, outCreatures)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		mapLayers, err := os.Create(mapInfoHtml)
+		if err != nil {
+			log.Fatal(err)
+		}
+		spew.Fprint(mapLayers, mapsHtml)
+
+		fmt.Println("    Saved HTML map sheet.")
 	}
-	spew.Fdump(mapInfo, shorterInfo)
-	fmt.Printf("    Dumping output to %s...\n", crtrInfoText)
-	spew.Fdump(crtrInfo, outputs["CHAR"].([]CreatureInfo))
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)
 
-	return tileFlags, zones, outputs["TNAM"].([]ItemInfo), outputs["PUZ2"].([]PuzzleInfo), outputs["CHAR"].([]CreatureInfo)
+	return outTiles, outZones, outItems, outPuzzles, outCreatures
 }
 
-func processTileData(tileId int, flags uint32) TileInfo {
-	t := TileInfo{}
-	t.Id = fmt.Sprintf("%04d", tileId)
+func processTileData(tileId int, flags uint32) gosoh.TileInfo {
+	t := gosoh.TileInfo{}
+	t.Id = tileId
 	t.Flags = reverse(fmt.Sprintf("%032b", flags))
 
 	// The first 9 bits let us break down what kind of tile this is
@@ -318,8 +253,8 @@ func processTileData(tileId int, flags uint32) TileInfo {
 	return t
 }
 
-func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
-	z := new(ZoneInfo)
+func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
+	z := gosoh.ZoneInfo{}
 
 	// Sanity check
 	zoneHeader := string(zData[2:6])
@@ -382,7 +317,7 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 	offset := (6 * z.Width * z.Height) + 22
 	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
-		z.TileTriggers = make([]TileTrigger, numTriggers)
+		z.TileTriggers = make([]gosoh.TileTrigger, numTriggers)
 		for k := 0; k < numTriggers; k++ {
 			z.TileTriggers[k].Type = triggerTypes[int(binary.LittleEndian.Uint16(zData[offset+2:]))]
 			z.TileTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
@@ -424,15 +359,15 @@ func processZoneData(zData []byte, tiles []TileInfo) ZoneInfo {
 		offset += sectionLength
 	}
 
-	return *z
+	return z
 }
 
-func processPuzzleData(pData []byte) (ret []PuzzleInfo) {
-	ret = make([]PuzzleInfo, 0)
+func processPuzzleData(pData []byte, numTiles int) (ret []gosoh.PuzzleInfo) {
+	ret = make([]gosoh.PuzzleInfo, 0)
 	offset := 0
 	for len(pData) > (offset) {
 		// 2 bytes of puzzle ID, plus 4 for the IPUZ header
-		p := PuzzleInfo{}
+		p := gosoh.PuzzleInfo{}
 		p.Id = int(binary.LittleEndian.Uint16(pData[offset:]))
 		if p.Id == 65535 { // End of puzzle section: we're out!
 			return
@@ -441,7 +376,7 @@ func processPuzzleData(pData []byte) (ret []PuzzleInfo) {
 
 		// (X - 2) bytes to hold the puzzle text:
 		puzzleLength := int(binary.LittleEndian.Uint16(pData[offset:]))
-		p.TextBytes = pData[offset : offset+puzzleLength]
+		p.TextBytes = pData[offset+2 : offset+puzzleLength]
 
 		offset += puzzleLength
 
@@ -449,7 +384,14 @@ func processPuzzleData(pData []byte) (ret []PuzzleInfo) {
 		// or it's given as a reward for a different thing?
 		// Might rename these, later
 		p.LockItemId = int(binary.LittleEndian.Uint16(pData[offset:]))
-		p.RewardItemId = int(binary.LittleEndian.Uint16(pData[offset:]))
+		reward := int(binary.LittleEndian.Uint16(pData[offset+2:]))
+		if reward > 0 && reward < numTiles {
+			p.RewardItemId = reward
+		} else { // if it's not referencing a tile, then it's probably bitflags...?
+			p.RewardItemId = 0
+			p.RewardFlags = reverse(fmt.Sprintf("%016b", reward))
+		}
+
 		offset += 4
 
 		ret = append(ret, p)
@@ -458,11 +400,11 @@ func processPuzzleData(pData []byte) (ret []PuzzleInfo) {
 	return
 }
 
-func processItemList(iData []byte) (ret []ItemInfo) {
-	ret = make([]ItemInfo, 0)
+func processItemList(iData []byte) (ret []gosoh.ItemInfo) {
+	ret = make([]gosoh.ItemInfo, 0)
 	// Each item entry is 26 bytes long
 	for i := 0; i < len(iData)-26; i += 26 {
-		iInfo := ItemInfo{}
+		iInfo := gosoh.ItemInfo{}
 		if iInfo.Id == 65535 { // End of items section: we're out!
 			return
 		}
@@ -482,11 +424,11 @@ func processItemList(iData []byte) (ret []ItemInfo) {
 	return
 }
 
-func processCharList(cData []byte) (ret []CreatureInfo) {
-	ret = make([]CreatureInfo, 0)
+func processCharList(cData []byte) (ret []gosoh.CreatureInfo) {
+	ret = make([]gosoh.CreatureInfo, 0)
 	// Each creature entry is 84 bytes long
 	for i := 0; i < len(cData)-84; i += 84 {
-		cInfo := CreatureInfo{}
+		cInfo := gosoh.CreatureInfo{}
 		cInfo.Id = int(binary.LittleEndian.Uint16(cData[i:]))
 
 		// Name starts at 10 and ends at the first 0
@@ -499,15 +441,15 @@ func processCharList(cData []byte) (ret []CreatureInfo) {
 		cInfo.Name = cName
 
 		// These all appear to be in the same spots
-		img := make(map[CardinalDirection]int)
-		img[UpLeft] = int(binary.LittleEndian.Uint16(cData[i+36:]))
-		img[DownRight] = int(binary.LittleEndian.Uint16(cData[i+38:]))
-		img[Up] = int(binary.LittleEndian.Uint16(cData[i+40:]))
-		img[Left] = int(binary.LittleEndian.Uint16(cData[i+42:]))
-		img[DownLeft] = int(binary.LittleEndian.Uint16(cData[i+44:]))
-		img[UpRight] = int(binary.LittleEndian.Uint16(cData[i+46:]))
-		img[Right] = int(binary.LittleEndian.Uint16(cData[i+48:]))
-		img[Down] = int(binary.LittleEndian.Uint16(cData[i+50:]))
+		img := make(map[gosoh.CardinalDirection]int)
+		img[gosoh.UpLeft] = int(binary.LittleEndian.Uint16(cData[i+36:]))
+		img[gosoh.DownRight] = int(binary.LittleEndian.Uint16(cData[i+38:]))
+		img[gosoh.Up] = int(binary.LittleEndian.Uint16(cData[i+40:]))
+		img[gosoh.Left] = int(binary.LittleEndian.Uint16(cData[i+42:]))
+		img[gosoh.DownLeft] = int(binary.LittleEndian.Uint16(cData[i+44:]))
+		img[gosoh.UpRight] = int(binary.LittleEndian.Uint16(cData[i+46:]))
+		img[gosoh.Right] = int(binary.LittleEndian.Uint16(cData[i+48:]))
+		img[gosoh.Down] = int(binary.LittleEndian.Uint16(cData[i+50:]))
 		cInfo.Images = img
 
 		ret = append(ret, cInfo)
