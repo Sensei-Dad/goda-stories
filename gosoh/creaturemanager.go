@@ -22,13 +22,13 @@ func AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
 			Image: Tiles[cInfo.Images[Down]], // ALL JAWAS, ALL THE TIME
 		}).
 		AddComponent(positionComp, &Position{
-			X: x,
-			Y: y,
+			X:     float64(x*TileWidth) + 0.5, // Spawn in the center of the tile
+			Y:     float64(y*TileHeight) + 0.5,
+			TileX: x,
+			TileY: y,
 		}).
 		AddComponent(movementComp, &Movable{
-			OldX:  x,
-			OldY:  y,
-			Speed: 1.0,
+			Speed: 2.0,
 		}).
 		AddComponent(collideComp, &Collidable{
 			IsBlocking: true,

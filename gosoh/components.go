@@ -26,7 +26,7 @@ type Creature struct {
 	Name       string
 	State      CreatureState
 	Facing     CardinalDirection
-	InMotion   bool
+	CanMove    bool
 	CreatureId int
 }
 
@@ -35,14 +35,14 @@ type PlayerInventory struct {
 }
 
 type Position struct {
-	X int
-	Y int
+	X     float64 // Position, in pixels
+	Y     float64
+	TileX int // Same, but measured with Tiles
+	TileY int
 }
 
 type Renderable struct {
-	Image  *ebiten.Image
-	PixelX float64
-	PixelY float64
+	Image *ebiten.Image
 }
 
 type PlayerAnimation struct {
@@ -54,14 +54,16 @@ type AnimatedTile struct {
 	Frames       []int // List of tile IDs, for drawing
 }
 
+// Defines the dimensions of the Entity's bounding box, in pixels
 type Collidable struct {
 	IsBlocking bool
+	Width      float64
+	Height     float64
+	Offset     float64
 }
 
 // Movables can move around the map, in a pixel-wise fashion
 type Movable struct {
-	OldX      int
-	OldY      int
 	Speed     float64
 	Direction CardinalDirection
 }

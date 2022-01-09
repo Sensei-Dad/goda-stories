@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image/color"
 	"math"
 
 	"github.com/MasterShizzle/goda-stories/gosoh"
@@ -22,11 +21,11 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 
 	// TODO: Center viewport function
 	g.View = ViewCoords{
-		X:          0.0,
-		Y:          0.0,
-		Width:      gosoh.ViewportWidth,
-		Height:     gosoh.ViewportHeight,
-		CurrentMap: 0,
+		X:           0.0,
+		Y:           0.0,
+		Width:       gosoh.ViewportWidth,
+		Height:      gosoh.ViewportHeight,
+		CurrentArea: 0,
 	}
 
 	gosoh.LoadAllTiles(tileInfo)
@@ -51,23 +50,23 @@ func (g *Game) Update() error {
 	gosoh.ProcessInput()
 	// TODO: Handle AI, randomly move critters around, etc.
 	// ProcessCreatures(g)
-	ms := g.World.Maps[g.View.CurrentMap]
+	ms := g.World.SubAreas[g.View.CurrentArea]
 	gosoh.ProcessMovement(ms)
 	g.CenterViewport(ms.Width, ms.Height)
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw each layer, starting at the bottom
+	// Draw the map and entities
 	g.World.DrawTerrain(screen, g.View)
-	g.World.DrawObjects(screen, g.View)
+	g.World.DrawWalls(screen, g.View)
 	gosoh.ProcessRenderables(screen)
 	g.World.DrawOverlay(screen, g.View)
 
-	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(10, 10)
-	screen.DrawImage(splash, op)
+	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
+	// op := &ebiten.DrawImageOptions{}
+	// op.GeoM.Translate(10, 10)
+	// screen.DrawImage(splash, op)
 
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
@@ -80,25 +79,24 @@ func (g *Game) Layout(w, h int) (int, int) {
 
 func (g *Game) CenterViewport(mapWidth, mapHeight int) {
 	pX, pY := gosoh.GetPlayerCoords()
+	vw := float64(g.View.Width * gosoh.TileWidth)
+	vh := float64(g.View.Height * gosoh.TileHeight)
 
-	maxX := float64(mapWidth * gosoh.TileWidth)
-	maxY := float64(mapHeight * gosoh.TileHeight)
-	vpWidth := float64(g.View.Width * gosoh.TileWidth)
-	vpHeight := float64(g.View.Height * gosoh.TileHeight)
-	vBuf := float64(gosoh.ViewportBuffer * gosoh.TileWidth)
+	halfWidth := vw / 2
+	halfHeight := vh / 2
 
+	maxX := float64(mapWidth*gosoh.TileWidth) - vw
+	maxY := float64(mapHeight*gosoh.TileHeight) - vh
+
+	// Center on the player wherever possible...
+	g.View.X = math.Min(math.Max(pX-halfWidth, 0), maxX)
+	g.View.Y = math.Min(math.Max(pY-halfHeight, 0), maxY)
+
+	// ...or if the map is smaller than the viewport, just center it
 	if mapWidth < g.View.Width {
-		// If the map is smaller than the viewport, just center it
-		g.View.X = float64(vpWidth-maxX) / float64(2*gosoh.TileWidth)
-	} else {
-		// Otherwise, maintain a border of a couple tiles wherever possible
-		g.View.X = math.Min(math.Max(vBuf, pX), maxX-vBuf) / float64(2*gosoh.TileWidth)
+		g.View.X = halfWidth - float64(mapWidth*gosoh.TileWidth/2)
 	}
-
-	// And so on, for the Y-coordinate
 	if mapHeight < g.View.Height {
-		g.View.Y = float64(vpHeight-maxY) / float64(2*gosoh.TileHeight)
-	} else {
-		g.View.Y = math.Min(math.Max(vBuf, pY), maxY-vBuf) / float64(2*gosoh.TileHeight)
+		g.View.Y = halfHeight - float64(mapHeight*gosoh.TileHeight/2)
 	}
 }

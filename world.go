@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math"
+	"image"
 
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -9,111 +9,47 @@ import (
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
-	Name string
-	Maps []gosoh.MapScreen
+	Name     string
+	SubAreas map[int]gosoh.MapArea
 }
 
 type ViewCoords struct {
-	X          float64
-	Y          float64
-	Width      int
-	Height     int
-	CurrentMap int
+	X           float64
+	Y           float64
+	Width       int
+	Height      int
+	CurrentArea int
 }
 
 func NewWorld() *GameWorld {
-	// For now, choose a random screen from those available and start there
-	// TODO: actual worldgen
 	gw := GameWorld{
 		Name: "Goda Stories",
 	}
-	zoneNum := gosoh.RandomInt(len(gosoh.Zones))
-	gw.Maps = make([]gosoh.MapScreen, 0)
-	ms := gosoh.NewMapScreen(zoneNum)
+	gw.SubAreas = make(map[int]gosoh.MapArea)
 
-	gw.Maps = append(gw.Maps, ms)
+	// Make a new Overworld
+	// Place the player on Dagobah
+	world := gosoh.NewOverworld(10, 10)
+	gw.SubAreas[world.Id] = world
 
 	return &gw
 }
 
-// Render the Terrain layer, which goes on the bottom
+// ALL this shizz needs to move to the ZoneManager
 func (gw *GameWorld) DrawTerrain(screen *ebiten.Image, vp ViewCoords) {
-	ms := gw.Maps[vp.CurrentMap]
-	// ms.PrintMap()
-	for y := 0; y < ms.Height; y++ {
-		for x := 0; x < ms.Width; x++ {
-			// Make sure coords are within the map bounds
-			mapX := int(math.Round(vp.X)) + x
-			mapY := int(math.Round(vp.Y)) + y
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(vp.X+float64(x*gosoh.TileWidth), vp.Y+float64(y*gosoh.TileHeight))
-			var img *ebiten.Image
-
-			if ms.CoordsAreInBounds(mapX, mapY) {
-				tile := ms.GetTileAt(mapX, mapY)
-				img = gosoh.GetTileImage(tile.TerrainImage)
-			} else {
-				// If the tile isn't on the map, we don't need to do anything
-				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
-				img = gosoh.BlankTile
-			}
-
-			screen.DrawImage(img, op)
-		}
-	}
+	a := gw.SubAreas[vp.CurrentArea]
+	op := &ebiten.DrawImageOptions{}
+	screen.DrawImage(a.Terrain.SubImage(image.Rect(int(vp.X), int(vp.Y), int(vp.X+float64(vp.Width*gosoh.TileWidth)), int(vp.Y+float64(vp.Height*gosoh.TileHeight)))).(*ebiten.Image), op)
 }
 
-func (gw *GameWorld) DrawObjects(screen *ebiten.Image, vp ViewCoords) {
-	ms := gw.Maps[vp.CurrentMap]
-	// ms.PrintMap()
-	for y := 0; y < vp.Height; y++ {
-		for x := 0; x < vp.Width; x++ {
-			// Make sure coords are within the map bounds
-			mapX := int(math.Round(vp.X)) + x
-			mapY := int(math.Round(vp.Y)) + y
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
-			var img *ebiten.Image
-
-			if ms.CoordsAreInBounds(mapX, mapY) {
-				tile := ms.GetTileAt(mapX, mapY)
-				img = gosoh.GetTileImage(tile.ObjectsImage)
-			} else {
-				// If the tile isn't on the map, we don't need to do anything
-				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
-				img = gosoh.BlankTile
-			}
-
-			screen.DrawImage(img, op)
-		}
-	}
+func (gw *GameWorld) DrawWalls(screen *ebiten.Image, vp ViewCoords) {
+	a := gw.SubAreas[vp.CurrentArea]
+	op := &ebiten.DrawImageOptions{}
+	screen.DrawImage(a.Walls.SubImage(image.Rect(int(vp.X), int(vp.Y), int(vp.X+float64(vp.Width*gosoh.TileWidth)), int(vp.Y+float64(vp.Height*gosoh.TileHeight)))).(*ebiten.Image), op)
 }
 
 func (gw *GameWorld) DrawOverlay(screen *ebiten.Image, vp ViewCoords) {
-	ms := gw.Maps[vp.CurrentMap]
-	// ms.PrintMap()
-	for y := 0; y < vp.Height; y++ {
-		for x := 0; x < vp.Width; x++ {
-			// Make sure coords are within the map bounds
-			mapX := int(math.Round(vp.X)) + x
-			mapY := int(math.Round(vp.Y)) + y
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x*gosoh.TileWidth), float64(y*gosoh.TileHeight))
-			var img *ebiten.Image
-
-			if ms.CoordsAreInBounds(mapX, mapY) {
-				tile := ms.GetTileAt(mapX, mapY)
-				img = gosoh.GetTileImage(tile.OverlayImage)
-			} else {
-				// If the tile isn't on the map, we don't need to do anything
-				// fmt.Printf("  [GetMapCoords] V(%d,%d) => M(%d,%d) is not on the map\n", x, y, mapX, mapY)
-				img = gosoh.BlankTile
-			}
-
-			screen.DrawImage(img, op)
-		}
-	}
+	a := gw.SubAreas[vp.CurrentArea]
+	op := &ebiten.DrawImageOptions{}
+	screen.DrawImage(a.Overlay.SubImage(image.Rect(int(vp.X), int(vp.Y), int(vp.X+float64(vp.Width*gosoh.TileWidth)), int(vp.Y+float64(vp.Height*gosoh.TileHeight)))).(*ebiten.Image), op)
 }

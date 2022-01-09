@@ -1,101 +1,68 @@
 package gosoh
 
-import (
-	"fmt"
-	"math"
+// Action manager:
+// - move stuff around the map
 
-	"github.com/bytearena/ecs"
-)
-
-func ProcessMovement(ms MapScreen) {
+func ProcessMovement(a MapArea) {
 	// Check all entities with a Movement comp
 	for _, result := range moveView.Get() {
 		moves := result.Components[movementComp].(*Movable)
 		pos := result.Components[positionComp].(*Position)
 		crtr := result.Components[creatureComp].(*Creature)
-		img := result.Components[renderableComp].(*Renderable)
 
-		// Creature wants to start a move, and isn't
-		// currently in the middle of another one
-		if !crtr.InMotion && !moves.Direction.NoDirection() {
-			newX := pos.X + moves.Direction.DeltaX
-			newY := pos.Y + moves.Direction.DeltaY
-			var thingCanMove bool
-
-			// Check the map tile first
-			if ms.CoordsAreInBounds(newX, newY) {
-				newTile := ms.GetTileAt(newX, newY)
-				thingCanMove = newTile.IsWalkable
-			} else {
-				thingCanMove = false
-			}
+		if moves.Direction.IsDirection() && crtr.CanMove {
+			nudgeX := float64(moves.Direction.DeltaX) * moves.Speed
+			nudgeY := float64(moves.Direction.DeltaY) * moves.Speed
+			newX := pos.X + nudgeX
+			newY := pos.Y + nudgeY
 
 			// Check all the collidables for common destinations, except for itself
-			for _, thing := range collideView.Get() {
-				// This is ugly, but manageable since we're only ever checking against one pool of stuff
-				pos2 := thing.Components[positionComp].(*Position)
-				col2 := thing.Components[collideComp].(*Collidable)
-				if pos2.X == newX && pos2.Y == newY && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
-					fmt.Println("Found blocking Entity")
-					thingCanMove = false
-				}
-			}
+			// for _, thing := range collideView.Get() {
+			// 	// This is ugly, but manageable since we're only ever checking against one pool of stuff
+			// 	pos2 := thing.Components[positionComp].(*Position)
+			// 	col2 := thing.Components[collideComp].(*Collidable)
+			// 	if pos2.X == newX && pos2.Y == newY && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
+			// 		fmt.Println("Found blocking Entity")
+			// 	}
+			// }
 
-			if thingCanMove {
-				// Yes, start the move
-				crtr.InMotion = true
-				crtr.State = Walking
-				moves.OldX = pos.X
-				moves.OldY = pos.Y
+			// Move, if possible
+			if newX == ClampFloat(newX, 0, float64(a.Width*TileWidth*18)) {
 				pos.X = newX
-				pos.Y = newY
-			} else {
-				// No, you can't move there
-				crtr.InMotion = false
-				crtr.State = Standing
-				pos.X = moves.OldX
-				pos.Y = moves.OldY
-				moves.Direction = NoMove
 			}
-		}
-		if crtr.InMotion { // Move in-progress
-			// Nudge the thing in its chosen direction, according to its speed
-			// TODO: Set a global game speed
-			nudgeX := (float64(pos.X-moves.OldX) * moves.Speed)
-			nudgeY := (float64(pos.Y-moves.OldY) * moves.Speed)
-			img.PixelX += nudgeX
-			img.PixelY += nudgeY
-
-			// Detect how far we've left in the move
-			distanceX := math.Abs(float64(pos.X*TileWidth) - img.PixelX)
-			distanceY := math.Abs(float64(pos.Y*TileHeight) - img.PixelY)
-
-			// Once we've got less than one move left, the move is completed
-			if distanceX <= moves.Speed && distanceY <= moves.Speed {
-				img.PixelX = float64(pos.X * TileWidth)
-				img.PixelY = float64(pos.Y * TileHeight)
-				moves.OldX = pos.X
-				moves.OldY = pos.Y
-				crtr.InMotion = false
-				moves.Direction = NoMove
+			if newY == ClampFloat(newY, 0, float64(a.Height*TileHeight*18)) {
+				pos.Y = newY
 			}
 		}
 	}
 }
+
+// Chess term: adjust the "piece" within its own tile, without moving it
+// func Jadoube(tPos *Position) {
+// 	moves := result.Components[movementComp].(*Movable)
+// 	crtr := result.Components[creatureComp].(*Creature)
+// 	img := result.Components[renderableComp].(*Renderable)
+// 	// Detect how far we've left in the move
+// 	distanceX := math.Abs(float64(tPos.X*TileWidth) - img.PixelX)
+// 	distanceY := math.Abs(float64(tPos.Y*TileHeight) - img.PixelY)
+
+// 	// Once we've got less than one move left, the move is completed
+// 	if distanceX <= moves.Speed && distanceY <= moves.Speed {
+// 		img.PixelX = float64(pos.X * TileWidth)
+// 		img.PixelY = float64(pos.Y * TileHeight)
+// 		moves.OldX = pos.X
+// 		moves.OldY = pos.Y
+// 		crtr.InMotion = false
+// 		moves.Direction = NoMove
+// 	}
+// }
 
 // TODO: Update animation images
 func GetPlayerCoords() (X, Y float64) {
 	for _, result := range playerView.Get() {
-		img := result.Components[renderableComp].(*Renderable)
-		X = img.PixelX
-		Y = img.PixelY
+		pos := result.Components[positionComp].(*Position)
+		X = pos.X
+		Y = pos.Y
 	}
 	return
-}
-
-func MoveCreature(crtr *ecs.QueryResult, newX, newY int) {
-	// Move the creature to the specified coords
-	pComp := crtr.Components[positionComp].(*Position)
-	pComp.X = newX
-	pComp.Y = newY
 }

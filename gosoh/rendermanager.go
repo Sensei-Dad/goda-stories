@@ -6,15 +6,16 @@ import (
 
 func ProcessRenderables(screen *ebiten.Image) {
 	for _, result := range drawView.Get() {
-		// TODO: Make sure something is actually within the Viewport
+		// TODO: Handle loading / unloading different Enty's as the player comes near
 		img := result.Components[renderableComp].(*Renderable)
 		crtr := result.Components[creatureComp].(*Creature)
+		pos := result.Components[positionComp].(*Position)
 		cInfo := Creatures[crtr.CreatureId]
 
 		img.Image = Tiles[cInfo.Images[crtr.Facing]]
 
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(img.PixelX, img.PixelY)
+		op.GeoM.Translate(pos.X, pos.Y)
 		screen.DrawImage(img.Image, op)
 	}
 }

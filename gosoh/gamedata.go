@@ -5,23 +5,13 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-type CreatureState string
+// All the constants a person could ever want...
+// Define "some" globals
+var playerSpeed float64 = 2.0
 
-const (
-	Standing  CreatureState = "Standing"
-	Walking   CreatureState = "Walking"
-	InMotion  CreatureState = "InMotion"
-	Attacking CreatureState = "Attacking"
-	Dragging  CreatureState = "Dragging"
-)
+const TileWidth, TileHeight int = 32, 32
+const ViewportWidth, ViewportHeight int = 10, 10
 
-type CardinalDirection struct {
-	Name   string
-	DeltaX int
-	DeltaY int
-}
-
-// Some globals
 var ECSManager *ecs.Manager
 var ECSTags map[string]ecs.Tag
 var Tiles []*ebiten.Image
@@ -41,28 +31,49 @@ var UpRight CardinalDirection = CardinalDirection{Name: "UpRight", DeltaX: 1, De
 var DownRight CardinalDirection = CardinalDirection{Name: "DownRight", DeltaX: 1, DeltaY: 1}
 var NoMove CardinalDirection = CardinalDirection{Name: "None", DeltaX: 0, DeltaY: 0}
 
-var playerSpeed float64 = 2.0
+// Special zone IDs to pay attention to
+const (
+	START_FACE int = 0
+	WIN_FACE   int = 76
+	LOSE_FACE  int = 77
+	DAGOBAH_BL int = 93
+	DAGOBAH_TL int = 94
+	DAGOBAH_TR int = 95
+	DAGOBAH_BR int = 96
+)
 
-const ViewportWidth, ViewportHeight int = 10, 10
-
-// Distance from the viewport edge, in tiles, before the screen begins to scroll
-const ViewportBuffer int = 4
-const TileWidth, TileHeight int = 32, 32
-
-func (d *CardinalDirection) NoDirection() bool {
-	// Return true if movement is zero
-	return (d.DeltaX == 0 && d.DeltaY == 0)
+func (d *CardinalDirection) IsDirection() bool {
+	// Return true if movement is non-zero
+	return !(d.DeltaX == 0 && d.DeltaY == 0)
 }
 
 // Game data
-type MapScreen struct {
-	Width  int
-	Height int
-	ZoneId int
-	Tiles  []MapTile
-	Items  []ItemInfo
-	// Creatures []CreatureInfo
-	// PushBlocks []PushBlockInfo
+type CreatureState string
+
+const (
+	Standing  CreatureState = "Standing"
+	Walking   CreatureState = "Walking"
+	InMotion  CreatureState = "InMotion"
+	Attacking CreatureState = "Attacking"
+	Dragging  CreatureState = "Dragging"
+)
+
+type CardinalDirection struct {
+	Name   string
+	DeltaX int
+	DeltaY int
+}
+
+// A contiguous area to be displayed
+type MapArea struct {
+	Id            int
+	Width         int
+	Height        int
+	Zones         []int
+	WalkableTiles []bool
+	Terrain       *ebiten.Image
+	Walls         *ebiten.Image
+	Overlay       *ebiten.Image
 }
 
 type MapTile struct {

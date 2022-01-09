@@ -26,3 +26,13 @@ func Clamp(num, minNum, maxNum int) int {
 		return num
 	}
 }
+
+func ClampFloat(num, minNum, maxNum float64) float64 {
+	if num < minNum {
+		return minNum
+	} else if num > maxNum {
+		return maxNum
+	} else {
+		return num
+	}
+}

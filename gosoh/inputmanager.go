@@ -42,14 +42,16 @@ func ProcessInput() {
 		mov := result.Components[movementComp].(*Movable)
 		crtr := result.Components[creatureComp].(*Creature)
 
-		// Change facing and attempt a move, if we're not already moving
-		if !crtr.InMotion {
-			if !dir.NoDirection() {
-				mov.Direction = dir
+		// Update, if we're able to move
+		if crtr.CanMove {
+			if dir.IsDirection() {
 				crtr.Facing = dir
+				crtr.State = Walking
 			} else {
 				crtr.State = Standing
 			}
+			// Tell the ActionManager what we're trying to do
+			mov.Direction = dir
 		}
 	}
 }
@@ -57,16 +59,14 @@ func ProcessInput() {
 func ShowDebugInfo(screen *ebiten.Image, viewX, viewY float64) {
 	out := ""
 	out += fmt.Sprintf("Viewport: (%0.2f, %0.2f)\n", viewX, viewY)
-	// for _, result := range playerView.Get() {
-	// 	mov := result.Components[movementComp].(*Movable)
-	// 	crtr := result.Components[creatureComp].(*Creature)
-	// 	out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
-	// 	out += fmt.Sprintf("InMotion:  %t\n", crtr.InMotion)
-	// 	out += fmt.Sprintf("Direction:  %s\n", mov.Direction.Name)
-	// }
-	for _, result := range moveView.Get() {
-		img := result.Components[renderableComp].(*Renderable)
-		out += fmt.Sprintf("Player: (%0.2f, %0.2f)\n", img.PixelX, img.PixelY)
+
+	// Player info
+	px, py := GetPlayerCoords()
+	out += fmt.Sprintf("Player: (%0.2f, %0.2f)\n", px, py)
+	for _, result := range playerView.Get() {
+		crtr := result.Components[creatureComp].(*Creature)
+		out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
+		out += fmt.Sprintf("CanMove:  %t\n", crtr.CanMove)
 	}
 	ebitenutil.DebugPrint(screen, out)
 }
