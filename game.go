@@ -1,6 +1,8 @@
 package main
 
 import (
+	"image/color"
+
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -59,10 +61,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	gosoh.ProcessRenderables(screen)
 	g.World.DrawOverlay(screen, g.View)
 
-	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xff, G: 0x00, B: 0xff, A: 1})
-	// op := &ebiten.DrawImageOptions{}
-	// op.GeoM.Translate(10, 10)
-	// screen.DrawImage(splash, op)
+	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(10, 10)
+	screen.DrawImage(splash, op)
 
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen)
