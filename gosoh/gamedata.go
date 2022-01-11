@@ -10,7 +10,7 @@ import (
 var playerSpeed float64 = 2.0
 
 const TileWidth, TileHeight int = 32, 32
-const ViewportWidth, ViewportHeight int = 10, 10
+const ViewportWidth, ViewportHeight int = 12, 10
 
 var ECSManager *ecs.Manager
 var ECSTags map[string]ecs.Tag
@@ -64,23 +64,20 @@ type CardinalDirection struct {
 	DeltaY int
 }
 
-// A contiguous area to be displayed
+// A contiguous area to be displayed (Dagobah is 4 screens, the Overworld is 10x10, etc...)
 type MapArea struct {
-	Id            int
-	Width         int
-	Height        int
-	Zones         []int
-	WalkableTiles []bool
-	Terrain       *ebiten.Image
-	Walls         *ebiten.Image
-	Overlay       *ebiten.Image
+	Id     int
+	Width  int
+	Height int
+	Zones  [][]*ZoneInfo
+	Tiles  [][]MapTile
 }
 
 type MapTile struct {
-	IsWalkable   bool
-	TerrainImage int
-	ObjectsImage int
-	OverlayImage int
+	IsWalkable    bool
+	TerrainTileId int
+	WallTileId    int
+	OverlayTileId int
 }
 
 type ZoneInfo struct {
@@ -145,4 +142,12 @@ type PlayerInfo struct {
 	Name   string
 	Images map[CardinalDirection]int
 	Speed  float64
+}
+
+// Collision detection for Creatures, Objects, etc.
+type CollisionBox struct {
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
 }

@@ -2,7 +2,7 @@ package gosoh
 
 import (
 	"fmt"
-	"image/color"
+	"image"
 	"log"
 
 	"github.com/bytearena/ecs"
@@ -12,7 +12,8 @@ import (
 
 /**
 TODO:
-- Render the entire map layer as an Image, and store it to the MapArea
+- Render the entire map layer as an Image, and store it to the MapArea?
+	- This results in an image that might be too large? Need a way to load => tile zones as-before
 - New struct: MapArea
 	- Dagobah - make Dagobah (z93-96) to test rendering / loading multiple Zones, Yoda's hut for entrances, etc.
 	Overworld - the big 10x10 map
@@ -55,12 +56,19 @@ func InitializeECS() {
 	positionComp = ECSManager.NewComponent()
 	collideComp = ECSManager.NewComponent()
 
+	// Add the Player Entity
 	// TODO: actually try to place the player on a movable tile
 	playerX := 4
 	playerY := 7
+	pX := float64(playerX*TileWidth) + 0.5 // Start center-tile
+	pY := float64(playerY*TileHeight) + 0.5
 
 	ECSManager.NewEntity().
-		AddComponent(playerComp, &PlayerInput{}).
+		AddComponent(playerComp, &PlayerInput{
+			ShowDebug:    false,
+			ShowBoxes:    false,
+			ShowWalkable: false,
+		}).
 		AddComponent(creatureComp, &Creature{
 			Name:       Creatures[0].Name,
 			State:      Standing,
@@ -76,13 +84,17 @@ func InitializeECS() {
 			Direction: NoMove,
 		}).
 		AddComponent(positionComp, &Position{
-			X:     float64(playerX*TileWidth) + 0.5, // Start center-tile
-			Y:     float64(playerY*TileHeight) + 0.5,
+			X:     pX,
+			Y:     pY,
 			TileX: playerX,
 			TileY: playerY,
 		}).
 		AddComponent(collideComp, &Collidable{
 			IsBlocking: true,
+			LeftEdge:   0.3,
+			RightEdge:  0.3,
+			TopEdge:    0.2,
+			BottomEdge: 0.5,
 		})
 
 	players := ecs.BuildTag(playerComp, renderableComp, movementComp, creatureComp, positionComp)
@@ -96,7 +108,7 @@ func InitializeECS() {
 	creatures := ecs.BuildTag(creatureComp, positionComp)
 	ECSTags["creatures"] = creatures
 
-	movables := ecs.BuildTag(movementComp, positionComp, creatureComp, renderableComp)
+	movables := ecs.BuildTag(movementComp, collideComp, positionComp, creatureComp, renderableComp)
 	ECSTags["movables"] = movables
 	moveView = ECSManager.CreateView(movables)
 
@@ -139,16 +151,18 @@ func NewMapArea(w, h int) MapArea {
 		Width:  w,
 		Height: h,
 	}
-	tw := w * TileWidth * 18
-	th := h * TileHeight * 18
-	ret.Terrain = ebiten.NewImage(tw, th)
-	ret.Walls = ebiten.NewImage(tw, th)
-	ret.Overlay = ebiten.NewImage(tw, th)
+	tw := w * 18
+	th := h * 18
 
-	// Black background
-	ret.Terrain.Fill(color.Black)
+	ret.Zones = make([][]*ZoneInfo, w)
+	ret.Tiles = make([][]MapTile, tw)
 
-	ret.Zones = make([]int, w*h)
+	for x := 0; x < w; x++ {
+		ret.Zones[x] = make([]*ZoneInfo, h)
+	}
+	for x := 0; x < tw; x++ {
+		ret.Tiles[x] = make([]MapTile, th)
+	}
 
 	return ret
 }
@@ -180,75 +194,71 @@ func (ms *MapArea) CoordsAreInBounds(x, y float64) bool {
 
 func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
 	zInfo := Zones[zoneId]
-	zIndex := (a.Width * y) + x
-	areaX := x * 18 * TileWidth // pixel coords of the top-left corner we start in
-	areaY := y * 18 * TileHeight
+	// Save a ref to which zone number this is, so we can grab ZoneInfo later
+	// Also used to determine when enemies get loaded / unloaded
+	a.Zones[x][y] = &zInfo
 
-	// Draw the zone tiles onto this area's map images
+	// Copy the zone tile IDs onto this area's tiles
 	for j := 0; j < zInfo.Height; j++ {
 		for i := 0; i < zInfo.Width; i++ {
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(areaX+(i*TileWidth)), float64(areaY+(j*TileHeight)))
-
-			tIndex := (zInfo.Width * j) + i
-			terImg := GetTileImage(zInfo.LayerData.Terrain[tIndex])
-			objImg := GetTileImage(zInfo.LayerData.Objects[tIndex])
-			ovrImg := GetTileImage(zInfo.LayerData.Overlay[tIndex])
-
-			a.Terrain.DrawImage(terImg, op)
-			a.Walls.DrawImage(objImg, op)
-			a.Overlay.DrawImage(ovrImg, op)
+			t := zInfo.GetTileAt(i, j)
+			tx := (x * zInfo.Width) + i
+			ty := (y * zInfo.Height) + j
+			a.Tiles[tx][ty] = t
 		}
 	}
 
-	// Save a ref to which zone number this is, so we can grab ZoneInfo later
-	a.Zones[zIndex] = zoneId
+	fmt.Printf("[AddZoneToArea] Added zone %03d to MapArea starting at (%d,%d)\n", zoneId, x*18, y*18)
 }
 
-// Pass in X,Y pixel coords => get the Tile info at those coords
-// func (a *MapArea) GetTileAt(x, y float64) MapTile {
-// 	// Find where this Zone is, within the Area...
-// 	ax := int(x/float64(TileWidth)) / 18
-// 	ay := int(y/float64(TileHeight)) / 18
-// 	zIndex := (a.Width * ay) + ax
-// 	zone := Zones[a.Zones[zIndex]]
+// Pass in X,Y coords => get the Tile info at those coords
+func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
+	tIndex := (z.Width * y) + x
+	ret := MapTile{}
+	ret.TerrainTileId = z.LayerData.Terrain[tIndex]
+	ret.WallTileId = z.LayerData.Objects[tIndex]
+	ret.OverlayTileId = z.LayerData.Terrain[tIndex]
+	ret.IsWalkable = CheckIsWalkable(ret.WallTileId)
 
-// 	// ...then find where this tile is within the Zone...
-// 	zx := int(x/float64(TileWidth)) - (18 * ax)
-// 	zy := int(y/float64(TileHeight)) - (18 * ay)
-// 	tIndex := (zone.Width * zy) + zx
+	return ret
+}
 
-// 	return TileInfos[tIndex]
-// 	return error
-// }
+// Draw the Terrain layer to the screen
+func (a *MapArea) DrawTerrain(screen *ebiten.Image, viewX, viewY float64, viewWidth, viewHeight int) {
+	// Draw a buffer of tiles around the edges of the Viewport, then draw each tile
+	layerImg := ebiten.NewImage((viewWidth+2)*TileWidth, (viewHeight+2)*TileHeight)
 
-// func (ms *MapArea) PrintMap() {
-// 	fmt.Printf("Map of zone_%03d:\n", ms.ZoneId)
-// 	for y := 0; y < ms.Height; y++ {
-// 		line1 := ""
-// 		line2 := ""
-// 		line3 := ""
-// 		for x := 0; x < ms.Width; x++ {
-// 			tile := ms.GetTileAt(x, y)
-// 			if tile.TerrainImage == Clamp(tile.TerrainImage, 0, len(Tiles)-1) {
-// 				line1 += fmt.Sprintf("%04d  ", tile.TerrainImage)
-// 			} else {
-// 				line1 += "      "
-// 			}
-// 			if tile.ObjectsImage == Clamp(tile.ObjectsImage, 0, len(Tiles)-1) {
-// 				line2 += fmt.Sprintf("%04d  ", tile.ObjectsImage)
-// 			} else {
-// 				line2 += "      "
-// 			}
-// 			if tile.OverlayImage == Clamp(tile.OverlayImage, 0, len(Tiles)-1) {
-// 				line3 += fmt.Sprintf("%04d  ", tile.OverlayImage)
-// 			} else {
-// 				line3 += "      "
-// 			}
-// 		}
-// 		fmt.Println(line1)
-// 		fmt.Println(line2)
-// 		fmt.Println(line3)
-// 		fmt.Println()
-// 	}
-// }
+	// X and Y of the starting tile (can be outside the AreaMap)
+	minX := int(viewX/float64(TileWidth)) - 1
+	minY := int(viewY/float64(TileHeight)) - 1
+	startX := viewX - float64((minX+1)*TileWidth)
+	startY := viewY - float64((minY+1)*TileHeight)
+
+	for y := minY; y < minY+viewHeight+2; y++ {
+		for x := minX; x < minX+viewWidth+2; x++ {
+			// Only draw a tile if we're inside the bounds of the MapArea
+			if x == Clamp(x, 0, len(a.Tiles[0])-1) && y == Clamp(y, 0, len(a.Tiles)-1) {
+				tNum := 65535 // Draw the blank tile by default
+				tNum = a.Tiles[x][y].TerrainTileId
+				tile := GetTileImage(tNum)
+				op := &ebiten.DrawImageOptions{}
+				op.GeoM.Translate(float64(x*TileWidth), float64(y*TileHeight))
+				layerImg.DrawImage(tile, op)
+			}
+		}
+	}
+
+	// Draw the Viewport-covered slice to the screen
+	screen.DrawImage(layerImg.SubImage(image.Rect(int(startX), int(startY), viewWidth*TileWidth, viewHeight*TileHeight)).(*ebiten.Image), nil)
+}
+
+func (a *MapArea) PrintMap() {
+	fmt.Printf("Map of MapArea %d:\n", a.Id)
+	for y := 0; y < len(a.Zones); y++ {
+		line1 := ""
+		for x := 0; x < len(a.Zones[y]); x++ {
+			line1 += fmt.Sprintf("%03d  ", a.Zones[x][y].Id)
+		}
+		fmt.Println(line1)
+	}
+}

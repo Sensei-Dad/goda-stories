@@ -1,5 +1,7 @@
 package gosoh
 
+import "fmt"
+
 // Action manager:
 // - move stuff around the map
 
@@ -9,28 +11,35 @@ func ProcessMovement(a MapArea) {
 		moves := result.Components[movementComp].(*Movable)
 		pos := result.Components[positionComp].(*Position)
 		crtr := result.Components[creatureComp].(*Creature)
+		col := result.Components[collideComp].(*Collidable)
 
 		if moves.Direction.IsDirection() && crtr.CanMove {
 			nudgeX := float64(moves.Direction.DeltaX) * moves.Speed
 			nudgeY := float64(moves.Direction.DeltaY) * moves.Speed
+
+			// Do we even need to check for the map edges...?
 			newX := pos.X + nudgeX
 			newY := pos.Y + nudgeY
 
+			var pBox, tBox CollisionBox
+			pBox = col.GetBox(newX, newY)
+
 			// Check all the collidables for common destinations, except for itself
-			// for _, thing := range collideView.Get() {
-			// 	// This is ugly, but manageable since we're only ever checking against one pool of stuff
-			// 	pos2 := thing.Components[positionComp].(*Position)
-			// 	col2 := thing.Components[collideComp].(*Collidable)
-			// 	if pos2.X == newX && pos2.Y == newY && col2.IsBlocking && thing.Entity.ID != result.Entity.ID {
-			// 		fmt.Println("Found blocking Entity")
-			// 	}
-			// }
+			for _, thing := range collideView.Get() {
+				// This is ugly, but manageable since we're only ever checking against one pool of stuff
+				pos2 := thing.Components[positionComp].(*Position)
+				col2 := thing.Components[collideComp].(*Collidable)
+				tBox = col2.GetBox(pos2.X, pos2.Y)
+				if col2.IsBlocking && pBox.Overlaps(tBox) && thing.Entity.ID != result.Entity.ID {
+					fmt.Println("Found blocking Entity")
+				}
+			}
 
 			// Move, if possible
-			if newX == ClampFloat(newX, 0, float64(a.Width*TileWidth*18)) {
+			if pBox.X == ClampFloat(pBox.X, 0, float64(a.Width*TileWidth*18)-pBox.Width) {
 				pos.X = newX
 			}
-			if newY == ClampFloat(newY, 0, float64(a.Height*TileHeight*18)) {
+			if pBox.Y == ClampFloat(pBox.Y, 0, float64(a.Height*TileHeight*18)-pBox.Height) {
 				pos.Y = newY
 			}
 		}

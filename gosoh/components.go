@@ -20,6 +20,9 @@ var collideComp *ecs.Component
 
 // Components
 type PlayerInput struct {
+	ShowDebug    bool
+	ShowBoxes    bool
+	ShowWalkable bool
 }
 
 type Creature struct {
@@ -54,12 +57,13 @@ type AnimatedTile struct {
 	Frames       []int // List of tile IDs, for drawing
 }
 
-// Defines the dimensions of the Entity's bounding box, in pixels
+// Defines the dimensions of the Entity's bounding box, in fractions of a tile
 type Collidable struct {
 	IsBlocking bool
-	Width      float64
-	Height     float64
-	Offset     float64
+	LeftEdge   float64
+	RightEdge  float64
+	TopEdge    float64
+	BottomEdge float64
 }
 
 // Movables can move around the map, in a pixel-wise fashion

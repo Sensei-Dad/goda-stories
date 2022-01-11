@@ -14,6 +14,12 @@ func ProcessInput() {
 		os.Exit(0)
 	}
 
+	var toggleDebug bool = false
+	// F2 shows Debug info
+	if ebiten.IsKeyPressed(ebiten.KeyF2) {
+		toggleDebug = true
+	}
+
 	// Without inputs, assume we're standing still
 	dir := NoMove
 
@@ -41,6 +47,7 @@ func ProcessInput() {
 		// fmt.Printf("Attempting to process input on %d components\n", len(result.Components))
 		mov := result.Components[movementComp].(*Movable)
 		crtr := result.Components[creatureComp].(*Creature)
+		plyr := result.Components[playerComp].(*PlayerInput)
 
 		// Update, if we're able to move
 		if crtr.CanMove {
@@ -50,8 +57,16 @@ func ProcessInput() {
 			} else {
 				crtr.State = Standing
 			}
-			// Tell the ActionManager what we're trying to do
+			// Direction or not, tell the ActionManager what we're trying to do
 			mov.Direction = dir
+		}
+
+		if toggleDebug {
+			if plyr.ShowDebug {
+				plyr.ShowDebug = false
+			} else {
+				plyr.ShowDebug = true
+			}
 		}
 	}
 }
@@ -68,5 +83,16 @@ func ShowDebugInfo(screen *ebiten.Image, viewX, viewY float64) {
 		out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)
 		out += fmt.Sprintf("CanMove:  %t\n", crtr.CanMove)
 	}
+
 	ebitenutil.DebugPrint(screen, out)
+}
+
+func DrawEntityBoxes(screen *ebiten.Image, viewX, viewY float64) {
+	for _, result := range collideView.Get() {
+		var box CollisionBox
+		col := result.Components[collideComp].(*Collidable)
+		pos := result.Components[positionComp].(*Position)
+		box = col.GetBox(pos.X-viewX, pos.Y-viewY)
+		DrawBox(screen, box)
+	}
 }
