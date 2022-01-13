@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/davecgh/go-spew/spew"
@@ -268,33 +269,90 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	// Populate a ZoneInfo for this map
 	z.Width = int(binary.LittleEndian.Uint16(zData[10:]))
 	z.Height = int(binary.LittleEndian.Uint16(zData[12:]))
-	z.Flags = reverse(fmt.Sprintf("%08b", zData[14]))
+
+	zt := int(zData[14])
+	switch zt {
+	case 1:
+		// TODO: pick the Teleporter maps out of here
+		z.Type = "Plain"
+		z.IsOverworld = true
+	case 2:
+		z.Type = "GateToNorth"
+		z.IsOverworld = true
+	case 3:
+		z.Type = "GateToSouth"
+		z.IsOverworld = true
+	case 4:
+		z.Type = "GateToEast"
+		z.IsOverworld = true
+	case 5:
+		z.Type = "GateToWest"
+		z.IsOverworld = true
+	case 6:
+		z.Type = "PortalEnter"
+		z.IsOverworld = true
+	case 7:
+		z.Type = "PortalExit"
+		z.IsOverworld = true
+	case 8:
+		z.Type = "Interior"
+		z.IsOverworld = false
+	case 9:
+		z.Type = "OpeningSplash"
+		z.IsOverworld = false
+	case 10:
+		z.Type = "FinalDestination"
+		z.IsOverworld = true
+	case 11:
+		z.Type = "HomeBase"
+		z.IsOverworld = true
+	case 13:
+		z.Type = "WinSplash"
+		z.IsOverworld = false
+	case 14:
+		z.Type = "LoseSplash"
+		z.IsOverworld = false
+	case 15:
+		z.Type = "ItemForTool"
+		z.IsOverworld = true
+	case 16:
+		z.Type = "ItemForItem"
+		z.IsOverworld = true
+	case 17:
+		z.Type = "ItemForTask"
+		z.IsOverworld = true
+	case 18:
+		z.Type = "FindTheForce"
+		z.IsOverworld = true
+	}
 
 	p := int(zData[20])
 	switch p {
 	case 1:
-		z.Type = "desert"
+		z.Biome = "desert"
 	case 2:
-		z.Type = "snow"
+		z.Biome = "snow"
 	case 3:
-		z.Type = "forest"
+		z.Biome = "forest"
 	case 5:
-		z.Type = "swamp"
+		z.Biome = "swamp"
 	default:
-		z.Type = "UNKNOWN"
+		z.Biome = "UNKNOWN"
 	}
 
 	// Grab tiles starting at byte 22: each one has 3x two-byte ints, for 3 tiles / cell
-	z.LayerData.Terrain = make([]int, z.Width*z.Height)
-	z.LayerData.Objects = make([]int, z.Width*z.Height)
-	z.LayerData.Overlay = make([]int, z.Width*z.Height)
+	z.TileMaps.Terrain = make([]int, z.Width*z.Height)
+	z.TileMaps.Objects = make([]int, z.Width*z.Height)
+	z.TileMaps.Overlay = make([]int, z.Width*z.Height)
 	for j := 0; j < (z.Width * z.Height); j++ {
-		z.LayerData.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j+22:]))
-		z.LayerData.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
-		z.LayerData.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j+26:]))
+		z.TileMaps.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j+22:]))
+		z.TileMaps.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
+		z.TileMaps.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j+26:]))
 	}
 
-	// Parse entries for object info
+	offset := (6 * z.Width * z.Height) + 22
+
+	// Parse entries for tile-based triggers
 	triggerTypes := []string{
 		"trigger_location",
 		"spawn_location",
@@ -314,7 +372,7 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 		"xwing_to_dagobah",
 		"UNKNOWN",
 	}
-	offset := (6 * z.Width * z.Height) + 22
+
 	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
 		z.TileTriggers = make([]gosoh.TileTrigger, numTriggers)
@@ -345,9 +403,12 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	offset += 2
 	z.Izx3 = zData[offset : offset+sectionLength-6]
 
-	// ...And so on
+	// Separate out the relevant parts
 	offset += sectionLength - 2
-	z.Izx4 = zData[offset : offset+8]
+	z.Izx4a = int(zData[offset+4])
+	zFlags := reverse(fmt.Sprintf("%08b", zData[offset+6]))
+	rep := strings.NewReplacer("1", "Y", "0", ".")
+	z.Izx4b = rep.Replace(zFlags)
 	offset += 8
 
 	// Parse actions, if there are any
@@ -372,11 +433,42 @@ func processPuzzleData(pData []byte, numTiles int) (ret []gosoh.PuzzleInfo) {
 		if p.Id == 65535 { // End of puzzle section: we're out!
 			return
 		}
+		// fmt.Printf("  [processPuzzleData] Parsing puzzle text %03d\n", p.Id)
 		offset += 6
 
 		// (X - 2) bytes to hold the puzzle text:
 		puzzleLength := int(binary.LittleEndian.Uint16(pData[offset:]))
-		p.TextBytes = pData[offset+2 : offset+puzzleLength]
+		puzBytes := pData[offset+2 : offset+puzzleLength]
+		// TODO: interpret 0x20 as a "newline" for dialogs?
+
+		puzTypeId := puzBytes[2]
+		switch puzTypeId {
+		case 0x00:
+			p.Type = "ItemForItem"
+		case 0x01:
+			p.Type = "ItemForTask"
+		case 0x02:
+			p.Type = "ItemForTask2"
+		case 0x03:
+			p.Type = "MainQuest"
+		}
+
+		puzItemTypeId := puzBytes[6]
+		switch puzItemTypeId {
+		case 0x00:
+			p.ItemType = "Keycard"
+		case 0x01:
+			p.ItemType = "Tool"
+		case 0x02:
+			p.ItemType = "Part"
+		case 0x04:
+			p.ItemType = "PlotItem"
+		default:
+			p.ItemType = "UNKNOWN"
+			log.Fatal(fmt.Sprintf("Found unknown puzzle type: %d", puzBytes[6]))
+		}
+
+		p.NeedText, p.DoneText, p.HaveText = slurpPuzzleText(puzBytes)
 
 		offset += puzzleLength
 
@@ -398,6 +490,44 @@ func processPuzzleData(pData []byte, numTiles int) (ret []gosoh.PuzzleInfo) {
 	}
 
 	return
+}
+
+func slurpPuzzleText(pb []byte) (need, done, have string) {
+	textLength := 0
+	textStart := 16
+	need = ""
+	done = ""
+	have = ""
+
+	out := ""
+	ret := make([]string, 0)
+	// Creep forward to the first non-zero value; that's the start of our text
+	for ok := true; ok; ok = pb[textStart] == 0x00 {
+		if pb[textStart] == 0x00 {
+			textStart = textStart + 2
+		}
+	}
+
+	for ok := true; ok; ok = textStart < (len(pb) - 4) {
+		textLength = int(binary.LittleEndian.Uint16(pb[textStart:]))
+		out = string(pb[textStart+2 : textStart+textLength+2])
+		textStart = textStart + textLength + 2
+		ret = append(ret, out)
+	}
+	if len(ret) == 3 {
+		need = ret[0]
+		done = ret[1]
+		have = ret[2]
+	} else if len(ret) == 2 {
+		done = ret[0]
+		have = ret[1]
+	} else if len(ret) == 1 {
+		have = ret[0]
+	} else {
+		log.Fatal(spew.Sprint(pb))
+	}
+
+	return need, done, have
 }
 
 func processItemList(iData []byte) (ret []gosoh.ItemInfo) {

@@ -57,6 +57,7 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the map and entities
+	currentArea = g.GetCurrentArea()
 	currentArea.DrawTerrain(screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
 	// g.World.DrawWalls(screen, g.View)
 	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y)

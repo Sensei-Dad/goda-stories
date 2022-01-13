@@ -81,12 +81,13 @@ type MapTile struct {
 }
 
 type ZoneInfo struct {
-	Id        int
-	Type      string
-	Width     int
-	Height    int
-	Flags     string
-	LayerData struct {
+	Id          int
+	Biome       string
+	Width       int
+	Height      int
+	Type        string
+	IsOverworld bool
+	TileMaps    struct {
 		Terrain []int
 		Objects []int
 		Overlay []int
@@ -95,7 +96,8 @@ type ZoneInfo struct {
 	Izax         []byte
 	Izx2         []byte
 	Izx3         []byte
-	Izx4         []byte
+	Izx4a        int
+	Izx4b        string
 	Iact         [][]byte
 }
 
@@ -114,9 +116,16 @@ type TileTrigger struct {
 	Arg  int
 }
 
+type ItemType int
+type PuzzleText string
+
 type PuzzleInfo struct {
 	Id           int
-	TextBytes    []byte
+	Type         string
+	ItemType     string
+	NeedText     string // "Hey, bring me a ___..."
+	HaveText     string // "...and in return, I'll give you a ___..."
+	DoneText     string // "...Thanks!" etc.
 	LockItemId   int
 	RewardItemId int
 	RewardFlags  string

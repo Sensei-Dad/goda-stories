@@ -93,7 +93,7 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	// }
 	ret = fmt.Sprintf("<div class=\"mapcontainer\"><hr></div>\n<h2 id=\"%s\">%s</h2>\n\n<div class=\"mapcontainer\">\n", mapName, mapName)
 	ret += fmt.Sprintf("<div class=\"mapimg\"><img src=\"../maps/%s.png\" alt=\"%s\"><div class=\"mapgrid\"></div></div>\n", mapName, mapName)
-	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Type, zone.Width, zone.Height, zone.Flags)
+	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Biome, zone.Width, zone.Height, zone.Type)
 
 	ret += "<div class=\"textbox\"><b>Object Triggers</b>\n\n"
 	if zone.TileTriggers == nil {
@@ -118,9 +118,9 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	}
 
 	ret += "<div class=\"mapcontainer\">\n"
-	ret += "<b>Terrain</b>\n\n" + getHTMLTableFromMap(zone.LayerData.Terrain, zone.Width, zone.Height)
-	ret += "<b>Objects</b>\n\n" + getHTMLTableFromMap(zone.LayerData.Objects, zone.Width, zone.Height)
-	ret += "<b>Overlay</b>\n\n" + getHTMLTableFromMap(zone.LayerData.Overlay, zone.Width, zone.Height) + "\n</div>\n<br></br>\n\n"
+	ret += "<b>Terrain</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Terrain, zone.Width, zone.Height)
+	ret += "<b>Objects</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Objects, zone.Width, zone.Height)
+	ret += "<b>Overlay</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Overlay, zone.Width, zone.Height) + "\n</div>\n<br></br>\n\n"
 
 	return
 }
@@ -177,17 +177,17 @@ func saveMapToPNG(mapPath string, zone gosoh.ZoneInfo) error {
 
 	// Draw tiles
 	for i := 0; i < (zone.Width * zone.Height); i++ {
-		terrainTile, err := getTileByNumber(zone.LayerData.Terrain[i])
+		terrainTile, err := getTileByNumber(zone.TileMaps.Terrain[i])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		objectsTile, err := getTileByNumber(zone.LayerData.Objects[i])
+		objectsTile, err := getTileByNumber(zone.TileMaps.Objects[i])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		overlayTile, err := getTileByNumber(zone.LayerData.Overlay[i])
+		overlayTile, err := getTileByNumber(zone.TileMaps.Overlay[i])
 		if err != nil {
 			log.Fatal(err)
 		}

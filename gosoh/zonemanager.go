@@ -215,9 +215,9 @@ func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
 func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
 	tIndex := (z.Width * y) + x
 	ret := MapTile{}
-	ret.TerrainTileId = z.LayerData.Terrain[tIndex]
-	ret.WallTileId = z.LayerData.Objects[tIndex]
-	ret.OverlayTileId = z.LayerData.Terrain[tIndex]
+	ret.TerrainTileId = z.TileMaps.Terrain[tIndex]
+	ret.WallTileId = z.TileMaps.Objects[tIndex]
+	ret.OverlayTileId = z.TileMaps.Terrain[tIndex]
 	ret.IsWalkable = CheckIsWalkable(ret.WallTileId)
 
 	return ret
