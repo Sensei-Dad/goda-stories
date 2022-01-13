@@ -73,6 +73,14 @@ type MapArea struct {
 	Tiles  [][]MapTile
 }
 
+type LayerName string
+
+const (
+	TerrainLayer LayerName = "Terrain"
+	WallsLayer   LayerName = "Walls"
+	OverlayLayer LayerName = "Overlay"
+)
+
 type MapTile struct {
 	IsWalkable    bool
 	TerrainTileId int

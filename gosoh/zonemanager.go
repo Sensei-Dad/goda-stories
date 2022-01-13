@@ -2,7 +2,6 @@ package gosoh
 
 import (
 	"fmt"
-	"image"
 	"log"
 
 	"github.com/bytearena/ecs"
@@ -217,39 +216,47 @@ func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
 	ret := MapTile{}
 	ret.TerrainTileId = z.TileMaps.Terrain[tIndex]
 	ret.WallTileId = z.TileMaps.Objects[tIndex]
-	ret.OverlayTileId = z.TileMaps.Terrain[tIndex]
+	ret.OverlayTileId = z.TileMaps.Overlay[tIndex]
 	ret.IsWalkable = CheckIsWalkable(ret.WallTileId)
 
 	return ret
 }
 
-// Draw the Terrain layer to the screen
-func (a *MapArea) DrawTerrain(screen *ebiten.Image, viewX, viewY float64, viewWidth, viewHeight int) {
-	// Draw a buffer of tiles around the edges of the Viewport, then draw each tile
-	layerImg := ebiten.NewImage((viewWidth+2)*TileWidth, (viewHeight+2)*TileHeight)
+// Draw a layer to the screen
+func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, viewWidth, viewHeight float64) {
+	viewBox := CollisionBox{
+		X:      viewX,
+		Y:      viewY,
+		Width:  viewWidth,
+		Height: viewHeight,
+	}
 
-	// X and Y of the starting tile (can be outside the AreaMap)
-	minX := int(viewX/float64(TileWidth)) - 1
-	minY := int(viewY/float64(TileHeight)) - 1
-	startX := viewX - float64((minX+1)*TileWidth)
-	startY := viewY - float64((minY+1)*TileHeight)
-
-	for y := minY; y < minY+viewHeight+2; y++ {
-		for x := minX; x < minX+viewWidth+2; x++ {
-			// Only draw a tile if we're inside the bounds of the MapArea
-			if x == Clamp(x, 0, len(a.Tiles[0])-1) && y == Clamp(y, 0, len(a.Tiles)-1) {
+	for y := 0; y < a.Height*18; y++ {
+		for x := 0; x < a.Width*18; x++ {
+			// Only need to draw a tile if we're inside the bounds of the MapArea
+			tBox := CollisionBox{
+				X:      float64(x * TileWidth),
+				Y:      float64(y * TileHeight),
+				Width:  float64(TileWidth),
+				Height: float64(TileHeight),
+			}
+			if viewBox.Overlaps(tBox) {
 				tNum := 65535 // Draw the blank tile by default
-				tNum = a.Tiles[x][y].TerrainTileId
+				switch lyr {
+				case TerrainLayer:
+					tNum = a.Tiles[x][y].TerrainTileId
+				case WallsLayer:
+					tNum = a.Tiles[x][y].WallTileId
+				case OverlayLayer:
+					tNum = a.Tiles[x][y].OverlayTileId
+				}
 				tile := GetTileImage(tNum)
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(x*TileWidth), float64(y*TileHeight))
-				layerImg.DrawImage(tile, op)
+				op.GeoM.Translate(tBox.X-viewX, tBox.Y-viewY)
+				screen.DrawImage(tile, op)
 			}
 		}
 	}
-
-	// Draw the Viewport-covered slice to the screen
-	screen.DrawImage(layerImg.SubImage(image.Rect(int(startX), int(startY), viewWidth*TileWidth, viewHeight*TileHeight)).(*ebiten.Image), nil)
 }
 
 func (a *MapArea) PrintMap() {

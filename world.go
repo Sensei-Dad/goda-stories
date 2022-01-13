@@ -6,16 +6,17 @@ import (
 
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
-	Name     string
-	SubAreas map[int]gosoh.MapArea
+	Name        string
+	SubAreas    map[int]gosoh.MapArea
+	CurrentArea int
 }
 
+// Coordinates of the Viewport; all measurements are in pixels
 type ViewCoords struct {
-	X           float64
-	Y           float64
-	Width       int
-	Height      int
-	CurrentArea int
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
 }
 
 func NewWorld() *GameWorld {
@@ -34,5 +35,5 @@ func NewWorld() *GameWorld {
 }
 
 func (g *Game) GetCurrentArea() gosoh.MapArea {
-	return g.World.SubAreas[g.View.CurrentArea]
+	return g.World.SubAreas[g.World.CurrentArea]
 }

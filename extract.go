@@ -196,13 +196,13 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 			log.Fatal(err)
 		}
 
-		mapLayers, err := os.Create(mapInfoHtml)
-		if err != nil {
-			log.Fatal(err)
-		}
-		spew.Fprint(mapLayers, mapsHtml)
+		// mapLayers, err := os.Create(mapInfoHtml)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// spew.Fprint(mapLayers, mapsHtml)
 
-		fmt.Println("    Saved HTML map sheet.")
+		// fmt.Println("    Saved HTML map sheet.")
 	}
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)

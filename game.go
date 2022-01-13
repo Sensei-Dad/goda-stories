@@ -20,8 +20,8 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 	g.View = ViewCoords{
 		X:      0.0,
 		Y:      0.0,
-		Width:  gosoh.ViewportWidth,
-		Height: gosoh.ViewportHeight,
+		Width:  float64(gosoh.ViewportWidth * gosoh.TileWidth),
+		Height: float64(gosoh.ViewportHeight * gosoh.TileHeight),
 	}
 
 	gosoh.LoadAllTiles(tileInfo)
@@ -58,10 +58,10 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the map and entities
 	currentArea = g.GetCurrentArea()
-	currentArea.DrawTerrain(screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
-	// g.World.DrawWalls(screen, g.View)
+	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
+	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
 	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y)
-	// g.World.DrawOverlay(screen, g.View)
+	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
 
 	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
 	// op := &ebiten.DrawImageOptions{}
@@ -75,14 +75,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// for now, return the map with nothing else around it
-	return (g.View.Width * gosoh.TileWidth), (g.View.Height * gosoh.TileHeight)
+	return gosoh.ViewportWidth * gosoh.TileWidth, gosoh.ViewportHeight * gosoh.TileHeight
 }
 
 func (g *Game) CenterViewport(a gosoh.MapArea) {
 	pX, pY := gosoh.GetPlayerCoords()
 
-	halfWidth := float64(g.View.Width * (gosoh.TileWidth / 2))
-	halfHeight := float64(g.View.Height * (gosoh.TileHeight / 2))
+	halfWidth := g.View.Width / 2
+	halfHeight := g.View.Height / 2
 
 	maxX := float64(a.Width * 18 * gosoh.TileWidth)
 	maxY := float64(a.Height * 18 * gosoh.TileHeight)
