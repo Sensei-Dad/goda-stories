@@ -115,8 +115,8 @@ type ZoneInfo struct {
 	}
 	TileTriggers []TileTrigger
 	Izax         []byte
-	Izx2         []byte
-	Izx3         []byte
+	RewardItems  []int // IZX2
+	QuestNPCs    []int // IZX3
 	Izx4a        int
 	Izx4b        string
 	Iact         [][]byte
@@ -180,4 +180,16 @@ type CollisionBox struct {
 	Y      float64
 	Width  float64
 	Height float64
+}
+
+// Get a named item, by tile ID
+func GetItemName(tNum int, iList []ItemInfo) (ret string) {
+	ret = "UNKNOWN"
+	for _, i := range iList {
+		if i.Id == tNum {
+			ret = i.Name
+		}
+	}
+
+	return
 }

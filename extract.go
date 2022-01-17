@@ -169,7 +169,7 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 			log.Fatal(err)
 		}
 
-		saveHTMLMaps(outZones)
+		saveHTMLMaps(outZones, outItems, outCreatures)
 	}
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)
@@ -358,17 +358,27 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	offset += 2
 	z.Izax = zData[offset : offset+sectionLength-6]
 
-	// Advance past the IZX2 header
+	// IZX2: Item rewards
 	offset += sectionLength - 2
 	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2
-	z.Izx2 = zData[offset : offset+sectionLength-6]
+	// How many reward items?
+	numItems := int(binary.LittleEndian.Uint16(zData[offset+2:]))
+	z.RewardItems = make([]int, numItems)
+	for i := 0; i < numItems; i++ {
+		z.RewardItems[i] = int(binary.LittleEndian.Uint16(zData[offset+4+(2*i):]))
+	}
 
-	// ...And again for IZX3
+	// IZX3: Quest-related NPCs
 	offset += sectionLength - 2
 	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2
-	z.Izx3 = zData[offset : offset+sectionLength-6]
+	// How many reward items?
+	numItems = int(binary.LittleEndian.Uint16(zData[offset+2:]))
+	z.QuestNPCs = make([]int, numItems)
+	for i := 0; i < numItems; i++ {
+		z.QuestNPCs[i] = int(binary.LittleEndian.Uint16(zData[offset+4+(2*i):]))
+	}
 
 	// Separate out the relevant parts
 	offset += sectionLength - 2

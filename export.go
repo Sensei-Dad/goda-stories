@@ -72,6 +72,24 @@ const htmlStarter string = `<!DOCTYPE html>
 		border-bottom: 1px solid black;
 		border-right: 1px solid gray;
 	}
+	.tilebox {
+		position: relative;
+		height: 32px;
+		width: 32px;
+	}
+	.tileboxname {
+		position: absolute;
+		top: 32px;
+		left: 0px;
+		background: rgba(200, 200, 200, 0.8);
+		color: #000;
+		visibility: hidden;
+		opacity: 0;
+	}
+	.tilebox:hover .tileboxname {
+		visibility: visible;
+		opacity: 1;
+	}
 	</style>
 </head>
 <body>`
@@ -100,7 +118,7 @@ func printToFile(filepath string, foo string) error {
 	return err
 }
 
-func saveHTMLMaps(zList []gosoh.ZoneInfo) {
+func saveHTMLMaps(zList []gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.CreatureInfo) {
 	// Save map info to HTML and images to PNGs
 	fmt.Println("[saveHTMLMaps] Stitching maps...")
 	mapsList := htmlStarter
@@ -112,7 +130,7 @@ func saveHTMLMaps(zList []gosoh.ZoneInfo) {
 
 		// Add entry to the main list and create a map HTML
 		mapsList += fmt.Sprintf("<li><a href=\"map_%03d.html\">Zone %03d</a></li>\n", zId, zId)
-		mapFile := getZoneHTML(zData)
+		mapFile := getZoneHTML(zData, iList)
 		mapFilePath := fmt.Sprintf(mapInfoMapFile, zId)
 
 		// Save the map image if not present
@@ -133,7 +151,7 @@ func saveHTMLMaps(zList []gosoh.ZoneInfo) {
 	printToFile(mapInfoHtml, mapsList)
 }
 
-func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
+func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo) (ret string) {
 	mapName := "map_" + fmt.Sprintf("%03d", zone.Id)
 	// For formatting purposes, stop at 5 maps
 	// if zone.Id > 5 {
@@ -141,7 +159,7 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	// 	return
 	// }
 	ret = htmlStarter
-	ret += fmt.Sprintf("<div class=\"mapcontainer\"><hr></div>\n<h2 id=\"%s\">%s</h2>\n\n<div class=\"mapcontainer\">\n", mapName, mapName)
+	ret += fmt.Sprintf("<h2>Zone %03d</h2>\n<div class=\"mapcontainer\"><hr></div>\n<div class=\"mapcontainer\">\n", zone.Id)
 	ret += fmt.Sprintf("<div class=\"mapimg\"><img src=\"%s.png\" alt=\"%s\"><div class=\"mapgrid\"></div></div>\n", mapName, mapName)
 	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Biome, zone.Width, zone.Height, zone.Type)
 
@@ -155,26 +173,50 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 			// Reminder: we can print info about the tile here, as well
 			switch t.Type {
 			case "map_entrance":
-				ret += "  <li>Map entrance" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>Map entrance" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+			case "map_exit":
+				ret += "  <li>Map exit" + fmt.Sprintf(" (%d, %d)</li>\n", t.X, t.Y)
 			case "vehicle_to_secondary_map":
-				ret += "  <li>Vehicle" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>Vehicle" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
 			case "xwing_to_dagobah", "xwing_from_dagobah":
-				ret += "  <li>XWing" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>X-Wing" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
 			default:
-				ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d) arg %d</li>\n", t.X, t.Y, t.Arg)
+				if t.Arg != 65535 {
+					ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d) arg %d</li>\n", t.X, t.Y, t.Arg)
+				} else {
+					ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d)</li>\n", t.X, t.Y)
+				}
 			}
 		}
 		ret += "</ul>\n</div>\n</div>\n<br></br>\n\n"
 	}
+
+	ret += "<div class=\"textbox\"><b>Quest NPCs</b><br />\n\n"
+	if len(zone.QuestNPCs) > 0 {
+		for _, i := range zone.QuestNPCs {
+			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
+			ret += fmt.Sprintf("%04d.png\" alt=\"Item %04d\"></div>", i, i)
+		}
+	} else {
+		ret += "(None)"
+	}
+	ret += "</div>\n"
+
+	ret += "<div class=\"textbox\"><b>Reward Items</b><br />\n"
+	if len(zone.RewardItems) > 0 {
+		for _, i := range zone.RewardItems {
+			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
+			ret += fmt.Sprintf("%04d.png\" alt=\"Item %04d\"><p class=\"tileboxname\">%s</p></div>", i, i, gosoh.GetItemName(i, iList))
+		}
+	} else {
+		ret += "(None)"
+	}
+	ret += "</div>\n"
+
 	ret += "<div class=\"textbox\"><b>IZAX</b>\n\n"
 	ret += "<pre>" + spew.Sdump(zone.Izax) + "</pre>\n"
 	ret += "</div>\n"
-	ret += "<div class=\"textbox\"><b>IZX2</b>\n\n"
-	ret += "<pre>" + spew.Sdump(zone.Izx2) + "</pre>\n"
-	ret += "</div>\n"
-	ret += "<div class=\"textbox\"><b>IZX3</b>\n\n"
-	ret += "<pre>" + spew.Sdump(zone.Izx3) + "</pre>\n"
-	ret += "</div>\n"
+
 	ret += "<div class=\"textbox\"><b>IZX4</b>\n\n"
 	ret += "<p>" + spew.Sdump(zone.Izx4a) + "</p>\n"
 	ret += "<pre>" + spew.Sdump(zone.Izx4b) + "</pre>\n"
