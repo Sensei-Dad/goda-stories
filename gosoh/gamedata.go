@@ -114,12 +114,18 @@ type ZoneInfo struct {
 		Overlay []int
 	}
 	TileTriggers []TileTrigger
-	Izax         []byte
+	ZoneActions  []ZoneAction
 	RewardItems  []int // IZX2
 	QuestNPCs    []int // IZX3
 	Izx4a        int
 	Izx4b        string
 	Iact         [][]byte
+}
+
+type ZoneAction struct {
+	Instruction []int
+	Args        []byte
+	Unknown     []byte
 }
 
 type TileInfo struct {

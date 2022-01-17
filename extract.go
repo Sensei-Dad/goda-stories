@@ -352,24 +352,51 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 		}
 	}
 
-	// Advance past the IZAX header and grab action data
+	// IZAX: Zone Actions (e.g. the X-Wing landing that happen when you enter Dagobah)
+	// 4B header, 2B section length
+	//   2B unused, 2B Unknown, and 2B to count X 44B commands afterward
+	//   X * 44B Actions
+	//     6B Instruction, 6B Args, and the rest is usually just FF?
+	// 4B unused
 	offset += 6
 	sectionLength := int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2
-	z.Izax = zData[offset : offset+sectionLength-6]
+	izax := zData[offset : offset+sectionLength-6]
+	numItems := int(binary.LittleEndian.Uint16(zData[offset+4:]))
+	z.ZoneActions = make([]gosoh.ZoneAction, numItems)
+	if numItems > 0 {
+		for i := 0; i < numItems; i++ {
+			zax := gosoh.ZoneAction{
+				Args:    izax[12+(44*i) : 18+(44*i)],
+				Unknown: (izax[18+(44*i) : 50+(44*i)]),
+			}
+			zax.Instruction = make([]int, 3)
+			zax.Instruction[0] = int(binary.LittleEndian.Uint16(izax[6+(44*i):]))
+			zax.Instruction[1] = int(binary.LittleEndian.Uint16(izax[8+(44*i):]))
+			zax.Instruction[2] = int(binary.LittleEndian.Uint16(izax[10+(44*i):]))
+
+			z.ZoneActions[i] = zax
+		}
+	}
 
 	// IZX2: Item rewards
+	// 6B Header + section length
+	// 2B Number of items
+	//   2B Item ID
 	offset += sectionLength - 2
 	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2
 	// How many reward items?
-	numItems := int(binary.LittleEndian.Uint16(zData[offset+2:]))
+	numItems = int(binary.LittleEndian.Uint16(zData[offset+2:]))
 	z.RewardItems = make([]int, numItems)
 	for i := 0; i < numItems; i++ {
 		z.RewardItems[i] = int(binary.LittleEndian.Uint16(zData[offset+4+(2*i):]))
 	}
 
 	// IZX3: Quest-related NPCs
+	// 6B Header + section length
+	// 2B Number of items
+	//   2B Item ID
 	offset += sectionLength - 2
 	sectionLength = int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2

@@ -195,7 +195,7 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo) (ret string) {
 	if len(zone.QuestNPCs) > 0 {
 		for _, i := range zone.QuestNPCs {
 			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
-			ret += fmt.Sprintf("%04d.png\" alt=\"Item %04d\"></div>", i, i)
+			ret += fmt.Sprintf("%04d.png\" alt=\"Tile %04d\"><p class=\"tileboxname\">Tile %04d</p></div>", i, i, i)
 		}
 	} else {
 		ret += "(None)"
@@ -213,8 +213,14 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo) (ret string) {
 	}
 	ret += "</div>\n"
 
-	ret += "<div class=\"textbox\"><b>IZAX</b>\n\n"
-	ret += "<pre>" + spew.Sdump(zone.Izax) + "</pre>\n"
+	ret += "<div class=\"textbox\"><b>Zone Actions</b>\n\n"
+	if len(zone.ZoneActions) > 0 {
+		for _, a := range zone.ZoneActions {
+			ret += "<pre>" + spew.Sdump(a) + "</pre>\n"
+		}
+	} else {
+		ret += "(None)"
+	}
 	ret += "</div>\n"
 
 	ret += "<div class=\"textbox\"><b>IZX4</b>\n\n"
