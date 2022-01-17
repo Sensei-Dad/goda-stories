@@ -13,16 +13,68 @@ func ProcessMovement(a MapArea) {
 		crtr := result.Components[creatureComp].(*Creature)
 		col := result.Components[collideComp].(*Collidable)
 
+		// Update the tile we're considered to be "in"
+		pos.TileX = int(pos.X / float64(TileWidth))
+		pos.TileY = int(pos.Y / float64(TileHeight))
+
 		if moves.Direction.IsDirection() && crtr.CanMove {
 			nudgeX := float64(moves.Direction.DeltaX) * moves.Speed
 			nudgeY := float64(moves.Direction.DeltaY) * moves.Speed
 
-			// Do we even need to check for the map edges...?
 			newX := pos.X + nudgeX
 			newY := pos.Y + nudgeY
 
 			var pBox, tBox CollisionBox
 			pBox = col.GetBox(newX, newY)
+
+			// Check which tiles overlap at the new location
+			topLeft, topRight, bottomLeft, bottomRight := a.CheckCorners(pBox)
+			var horizOk, vertOk bool
+
+			// There's probably a more elegant way to loop this
+			// TODO: Check for diagonals, allow "jumps"
+			if moves.Direction.DeltaX > 0 { // Look rightward
+				if moves.Direction.IsDiagonal() {
+					if moves.Direction.DeltaY < 0 {
+						horizOk = !topRight
+					} else {
+						horizOk = !bottomRight
+					}
+				} else {
+					horizOk = !(topRight || bottomRight)
+				}
+			} else { // Leftward
+				if moves.Direction.IsDiagonal() {
+					if moves.Direction.DeltaY < 0 {
+						horizOk = !topLeft
+					} else {
+						horizOk = !bottomLeft
+					}
+				} else {
+					horizOk = !(topLeft || bottomLeft)
+				}
+			}
+			if moves.Direction.DeltaY > 0 { // Upward
+				if moves.Direction.IsDiagonal() {
+					if moves.Direction.DeltaX < 0 {
+						vertOk = !topLeft
+					} else {
+						vertOk = !topRight
+					}
+				} else {
+					vertOk = !(topRight || topLeft)
+				}
+			} else { // Downward
+				if moves.Direction.IsDiagonal() {
+					if moves.Direction.DeltaX < 0 {
+						vertOk = !bottomLeft
+					} else {
+						vertOk = !bottomRight
+					}
+				} else {
+					vertOk = !(bottomRight || bottomLeft)
+				}
+			}
 
 			// Check all the collidables for common destinations, except for itself
 			for _, thing := range collideView.Get() {
@@ -35,11 +87,13 @@ func ProcessMovement(a MapArea) {
 				}
 			}
 
+			fmt.Printf("HMove: %t, VMove: %t\n", horizOk, vertOk)
+
 			// Move, if possible
-			if pBox.X == ClampFloat(pBox.X, 0, float64(a.Width*TileWidth*18)-pBox.Width) {
+			if pBox.X == ClampFloat(pBox.X, 0, float64(a.Width*TileWidth*18)) && horizOk {
 				pos.X = newX
 			}
-			if pBox.Y == ClampFloat(pBox.Y, 0, float64(a.Height*TileHeight*18)-pBox.Height) {
+			if pBox.Y == ClampFloat(pBox.Y, 0, float64(a.Height*TileHeight*18)) && vertOk {
 				pos.Y = newY
 			}
 		}
@@ -67,11 +121,13 @@ func ProcessMovement(a MapArea) {
 // }
 
 // TODO: Update animation images
-func GetPlayerCoords() (X, Y float64) {
+func GetPlayerCoords() (X, Y float64, tX, tY int) {
 	for _, result := range playerView.Get() {
 		pos := result.Components[positionComp].(*Position)
 		X = pos.X
 		Y = pos.Y
+		tX = pos.TileX
+		tY = pos.TileY
 	}
 	return
 }

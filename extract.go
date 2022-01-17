@@ -146,33 +146,6 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 		}
 	}
 
-	// Save map info to HTML and images to PNGs
-	fmt.Printf("[%s] Stitching maps...\n", fileName)
-	numZones := len(outZones)
-	skipped := 0
-	mapsHtml := htmlStarter
-
-	for zId, zData := range outZones {
-		mapNum := fmt.Sprintf("%03d", zId)
-		mapFilePath := "assets/maps/map_" + mapNum + ".png"
-
-		mapsHtml += getZoneHTML(zData)
-
-		_, err := os.Stat(mapFilePath)
-		if err == nil {
-			// Skip creating the map if it's already done
-			skipped++
-		} else {
-			// Otherwise, stitch the map together and save it
-			err = saveMapToPNG(mapFilePath, zData)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-	fmt.Printf("    %d maps extracted, %d skipped.\n", numZones-skipped, skipped)
-	mapsHtml += "\n</body>\n</html>\n"
-
 	// create various output files
 	if dumpOutputs {
 		err = dumpToFile(tileInfoFile, outTiles)
@@ -187,22 +160,16 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = dumpToFile(mapInfoText, outZones)
-		if err != nil {
-			log.Fatal(err)
-		}
+		// err = dumpToFile(mapInfoText, outZones)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
 		err = dumpToFile(crtrInfoText, outCreatures)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		// mapLayers, err := os.Create(mapInfoHtml)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// spew.Fprint(mapLayers, mapsHtml)
-
-		// fmt.Println("    Saved HTML map sheet.")
+		saveHTMLMaps(outZones)
 	}
 
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)

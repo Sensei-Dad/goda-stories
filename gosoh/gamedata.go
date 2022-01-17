@@ -47,6 +47,18 @@ func (d *CardinalDirection) IsDirection() bool {
 	return !(d.DeltaX == 0 && d.DeltaY == 0)
 }
 
+func (d *CardinalDirection) IsHorizontal() bool {
+	return d.DeltaX != 0
+}
+
+func (d *CardinalDirection) IsVertical() bool {
+	return d.DeltaY != 0
+}
+
+func (d *CardinalDirection) IsDiagonal() bool {
+	return d.DeltaX != 0 && d.DeltaY != 0
+}
+
 // Game data
 type CreatureState string
 
@@ -83,6 +95,7 @@ const (
 
 type MapTile struct {
 	IsWalkable    bool
+	Box           CollisionBox
 	TerrainTileId int
 	WallTileId    int
 	OverlayTileId int

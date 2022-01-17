@@ -59,6 +59,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the map and entities
 	currentArea = g.GetCurrentArea()
 	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
+	// TODO: draw a walk mask
 	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
 	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y)
 	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
@@ -79,7 +80,7 @@ func (g *Game) Layout(w, h int) (int, int) {
 }
 
 func (g *Game) CenterViewport(a gosoh.MapArea) {
-	pX, pY := gosoh.GetPlayerCoords()
+	pX, pY, _, _ := gosoh.GetPlayerCoords()
 
 	halfWidth := g.View.Width / 2
 	halfHeight := g.View.Height / 2

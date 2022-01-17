@@ -76,8 +76,8 @@ func ShowDebugInfo(screen *ebiten.Image, viewX, viewY float64) {
 	out += fmt.Sprintf("Viewport: (%0.2f, %0.2f)\n", viewX, viewY)
 
 	// Player info
-	px, py := GetPlayerCoords()
-	out += fmt.Sprintf("Player: (%0.2f, %0.2f)\n", px, py)
+	px, py, tx, ty := GetPlayerCoords()
+	out += fmt.Sprintf("Player: %0.2f, %0.2f (X: %d, Y: %d)\n", px, py, tx, ty)
 	for _, result := range playerView.Get() {
 		crtr := result.Components[creatureComp].(*Creature)
 		out += fmt.Sprintf("State:  %s\nFacing: %s\n", crtr.State, crtr.Facing.Name)

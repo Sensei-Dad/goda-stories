@@ -58,9 +58,9 @@ func InitializeECS() {
 	// Add the Player Entity
 	// TODO: actually try to place the player on a movable tile
 	playerX := 4
-	playerY := 7
-	pX := float64(playerX*TileWidth) + 0.5 // Start center-tile
-	pY := float64(playerY*TileHeight) + 0.5
+	playerY := 14
+	pX := float64(playerX*TileWidth + (TileWidth / 2))
+	pY := float64(playerY*TileHeight + (TileHeight / 2))
 
 	ECSManager.NewEntity().
 		AddComponent(playerComp, &PlayerInput{
@@ -182,13 +182,46 @@ func CheckIsWalkable(tNum int) bool {
 	return TileInfos[tNum].IsWalkable
 }
 
-func (ms *MapArea) CoordsAreInBounds(x, y float64) bool {
-	if x >= 0 && x <= float64((ViewportWidth-1)*TileWidth) {
-		if y >= 0 && y <= float64((ViewportHeight-1)*TileHeight) {
-			return true
-		}
+// Check for which tile (or tiles) a CollisionBox may be overlapping
+// A box overlaps 4 tiles at most (as it's roughly the size of a tile)
+func (a *MapArea) CheckCorners(b CollisionBox) (tl, tr, bl, br bool) {
+	// Find the tile coordinates of each corner
+	tx1 := int(b.X / float64(TileWidth))
+	ty1 := int(b.Y / float64(TileHeight))
+
+	tx2 := int((b.X + b.Width) / float64(TileWidth))
+	ty2 := int((b.Y + b.Height) / float64(TileHeight))
+
+	// If all 4 corners are within the same tile, then it doesn't overlap any other tiles
+	if tx1 == tx2 && ty1 == ty2 {
+		tl, tr, bl, br = false, false, false, false
+		return
 	}
-	return false
+
+	// Check the tile at each corner, including IsWalkable
+	// If the box overlaps the edges of the map, that "counts"
+	if tx1 != Clamp(tx1, 0, len(a.Tiles)) {
+		tl = true
+	} else {
+		tl = b.OverlapsTile(a.Tiles[tx1][ty1])
+	}
+	if tx2 != Clamp(tx2, 0, len(a.Tiles)) {
+		tr = true
+	} else {
+		tr = b.OverlapsTile(a.Tiles[tx2][ty1])
+	}
+	if ty1 != Clamp(ty1, 0, len(a.Tiles[0])) {
+		bl = true
+	} else {
+		bl = b.OverlapsTile(a.Tiles[tx1][ty2])
+	}
+	if ty2 != Clamp(ty2, 0, len(a.Tiles[0])) {
+		br = true
+	} else {
+		br = b.OverlapsTile(a.Tiles[tx2][ty2])
+	}
+
+	return
 }
 
 func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
@@ -197,12 +230,14 @@ func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
 	// Also used to determine when enemies get loaded / unloaded
 	a.Zones[x][y] = &zInfo
 
-	// Copy the zone tile IDs onto this area's tiles
+	// Copy the zone tile IDs onto this area's tiles, and set the collision box position
 	for j := 0; j < zInfo.Height; j++ {
 		for i := 0; i < zInfo.Width; i++ {
 			t := zInfo.GetTileAt(i, j)
 			tx := (x * zInfo.Width) + i
 			ty := (y * zInfo.Height) + j
+			t.Box.X = float64(tx * TileWidth)
+			t.Box.Y = float64(ty * TileHeight)
 			a.Tiles[tx][ty] = t
 		}
 	}
@@ -218,6 +253,10 @@ func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
 	ret.WallTileId = z.TileMaps.Objects[tIndex]
 	ret.OverlayTileId = z.TileMaps.Overlay[tIndex]
 	ret.IsWalkable = CheckIsWalkable(ret.WallTileId)
+	ret.Box = CollisionBox{
+		Width:  float64(TileWidth),
+		Height: float64(TileHeight),
+	}
 
 	return ret
 }
@@ -234,13 +273,7 @@ func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, v
 	for y := 0; y < a.Height*18; y++ {
 		for x := 0; x < a.Width*18; x++ {
 			// Only need to draw a tile if we're inside the bounds of the MapArea
-			tBox := CollisionBox{
-				X:      float64(x * TileWidth),
-				Y:      float64(y * TileHeight),
-				Width:  float64(TileWidth),
-				Height: float64(TileHeight),
-			}
-			if viewBox.Overlaps(tBox) {
+			if viewBox.Overlaps(a.Tiles[x][y].Box) {
 				tNum := 65535 // Draw the blank tile by default
 				switch lyr {
 				case TerrainLayer:
@@ -252,7 +285,11 @@ func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, v
 				}
 				tile := GetTileImage(tNum)
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(tBox.X-viewX, tBox.Y-viewY)
+				op.GeoM.Translate(a.Tiles[x][y].Box.X-viewX, a.Tiles[x][y].Box.Y-viewY)
+				// Draw the box, if it's collidable
+				if !a.Tiles[x][y].IsWalkable {
+					DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y)
+				}
 				screen.DrawImage(tile, op)
 			}
 		}

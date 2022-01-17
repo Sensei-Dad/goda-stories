@@ -15,6 +15,15 @@ func (a *CollisionBox) Overlaps(b CollisionBox) bool {
 		a.Y+a.Height > b.Y
 }
 
+// similar to CollisionBox.Overlaps, but for a MapTile
+func (box *CollisionBox) OverlapsTile(t MapTile) bool {
+	return (!t.IsWalkable) &&
+		box.X < t.Box.X+t.Box.Width &&
+		box.X+box.Width > t.Box.X &&
+		box.Y < t.Box.Y+t.Box.Height &&
+		box.Y+box.Height > t.Box.Y
+}
+
 // construct a box from the given point and edges
 // box size is a fraction of tile size, so e.g. everything at 0.5 would give a collision box of 1 tile
 func (c *Collidable) GetBox(centerX, centerY float64) CollisionBox {
@@ -38,4 +47,13 @@ func DrawBox(screen *ebiten.Image, box CollisionBox) {
 
 	ebitenutil.DrawLine(screen, box.X+0.4*box.Width, box.Y+0.5*box.Height, box.X+0.6*box.Width, box.Y+0.5*box.Height, clr)
 	ebitenutil.DrawLine(screen, box.X+0.5*box.Width, box.Y+0.4*box.Height, box.X+0.5*box.Width, box.Y+0.6*box.Height, clr)
+}
+
+func DrawTileBox(screen *ebiten.Image, box CollisionBox, viewX, viewY float64) {
+	var clr color.Color = color.RGBA{R: 0, G: 255, B: 0, A: 255}
+
+	ebitenutil.DrawLine(screen, box.X-viewX, box.Y-viewY, box.X+box.Width-viewX, box.Y-viewY, clr)
+	ebitenutil.DrawLine(screen, box.X+box.Width-viewX, box.Y-viewY, box.X+box.Width-viewX, box.Y+box.Height-viewY, clr)
+	ebitenutil.DrawLine(screen, box.X+box.Width-viewX, box.Y+box.Height-viewY, box.X-viewX, box.Y+box.Height-viewY, clr)
+	ebitenutil.DrawLine(screen, box.X-viewX, box.Y+box.Height-viewY, box.X-viewX, box.Y-viewY, clr)
 }

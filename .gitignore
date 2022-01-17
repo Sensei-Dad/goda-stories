@@ -1,9 +1,11 @@
 assets/tiles/*.png
 assets/maps/*.png
+assets/maps/*.html
 assets/text/*.txt
 assets/text/*.html
 assets/test
 assets/test/*
+
 data/YODESK.DTA
 data/IPUZ*
 data/TNAM*
@@ -11,7 +13,9 @@ data/PUZ2*
 data/CHAR*
 data/ICHA*
 data/IZON*
+data/ZONE*
 data/STUP*
+
 goda-stories
 out.txt
 reset.sh

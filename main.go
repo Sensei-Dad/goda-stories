@@ -21,7 +21,7 @@ func main() {
 	var puzzleInfo []gosoh.PuzzleInfo
 	var creatureInfo []gosoh.CreatureInfo
 
-	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo = processYodaFile(yodaFile, false)
+	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo = processYodaFile(yodaFile, true)
 
 	// Init the game...
 	g := NewGame(tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo)

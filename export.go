@@ -16,10 +16,12 @@ import (
 const tileInfoFile = "assets/text/tileInfo.txt"
 const itemInfoFile = "assets/text/itemInfo.txt"
 const puzzleInfoFile = "assets/text/puzzleInfo.txt"
-const mapInfoText = "assets/text/mapInfo.txt"
 const crtrInfoText = "assets/text/creatureInfo.txt"
 
-// const mapInfoHtml = "assets/text/mapInfo.html"
+// const mapInfoText = "assets/text/mapInfo.txt"
+const mapInfoHtml = "assets/maps/mapInfo.html"
+const mapInfoMapFile = "assets/maps/map_%03d.html"
+
 const htmlStarter string = `<!DOCTYPE html>
 <html lang="en">
 
@@ -72,17 +74,63 @@ const htmlStarter string = `<!DOCTYPE html>
 	}
 	</style>
 </head>
-<body>
-<h1>Yoda Stories Map Info</h1>
-`
+<body>`
 
 func dumpToFile(filepath string, foo ...interface{}) error {
 	// Create the output file
 	file, err := os.Create(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	spew.Fdump(file, foo)
 	fmt.Printf("[dumpToFile] Saved to file: %s\n", filepath)
 	return err
+}
+
+func printToFile(filepath string, foo string) error {
+	// Create the output file
+	file, err := os.Create(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	spew.Fprint(file, foo)
+	fmt.Printf("[printToFile] Saved to file: %s\n", filepath)
+	return err
+}
+
+func saveHTMLMaps(zList []gosoh.ZoneInfo) {
+	// Save map info to HTML and images to PNGs
+	fmt.Println("[saveHTMLMaps] Stitching maps...")
+	mapsList := htmlStarter
+	mapsList += "<h1>Yoda Stories Map Info</h1>\n<ul>\n"
+
+	for zId, zData := range zList {
+		mapNum := fmt.Sprintf("%03d", zId)
+		mapImagePath := "assets/maps/map_" + mapNum + ".png"
+
+		// Add entry to the main list and create a map HTML
+		mapsList += fmt.Sprintf("<li><a href=\"map_%03d.html\">Zone %03d</a></li>\n", zId, zId)
+		mapFile := getZoneHTML(zData)
+		mapFilePath := fmt.Sprintf(mapInfoMapFile, zId)
+
+		// Save the map image if not present
+		_, err := os.Stat(mapImagePath)
+		if err != nil {
+			err = saveMapToPNG(mapImagePath, zData)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		// Save the map info as an HTML file
+		printToFile(mapFilePath, mapFile)
+	}
+	fmt.Printf("    %d maps extracted.\n", len(zList))
+	mapsList += "</ul>\n\n</body>\n</html>\n"
+
+	printToFile(mapInfoHtml, mapsList)
 }
 
 func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
@@ -92,11 +140,12 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	// 	ret = ""
 	// 	return
 	// }
-	ret = fmt.Sprintf("<div class=\"mapcontainer\"><hr></div>\n<h2 id=\"%s\">%s</h2>\n\n<div class=\"mapcontainer\">\n", mapName, mapName)
-	ret += fmt.Sprintf("<div class=\"mapimg\"><img src=\"../maps/%s.png\" alt=\"%s\"><div class=\"mapgrid\"></div></div>\n", mapName, mapName)
+	ret = htmlStarter
+	ret += fmt.Sprintf("<div class=\"mapcontainer\"><hr></div>\n<h2 id=\"%s\">%s</h2>\n\n<div class=\"mapcontainer\">\n", mapName, mapName)
+	ret += fmt.Sprintf("<div class=\"mapimg\"><img src=\"%s.png\" alt=\"%s\"><div class=\"mapgrid\"></div></div>\n", mapName, mapName)
 	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Biome, zone.Width, zone.Height, zone.Type)
 
-	ret += "<div class=\"textbox\"><b>Object Triggers</b>\n\n"
+	ret += "<div class=\"textbox\"><b>Tile Triggers</b>\n\n"
 	if zone.TileTriggers == nil {
 		ret += "<p>None</p>\n</div>\n</div>\n\n"
 	} else {
@@ -106,22 +155,42 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 			// Reminder: we can print info about the tile here, as well
 			switch t.Type {
 			case "map_entrance":
-				ret += "  <li>Map entrance" + fmt.Sprintf(" (%d, %d) => <a href=\"#map_%03d\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>Map entrance" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
 			case "vehicle_to_secondary_map":
-				ret += "  <li>Vehicle" + fmt.Sprintf(" (%d, %d) => <a href=\"#map_%03d\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>Vehicle" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
 			case "xwing_to_dagobah", "xwing_from_dagobah":
-				ret += "  <li>XWing" + fmt.Sprintf(" (%d, %d) => <a href=\"#map_%03d\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
+				ret += "  <li>XWing" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">map_%03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
 			default:
 				ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d) arg %d</li>\n", t.X, t.Y, t.Arg)
 			}
 		}
 		ret += "</ul>\n</div>\n</div>\n<br></br>\n\n"
 	}
+	ret += "<div class=\"textbox\"><b>IZAX</b>\n\n"
+	ret += "<pre>" + spew.Sdump(zone.Izax) + "</pre>\n"
+	ret += "</div>\n"
+	ret += "<div class=\"textbox\"><b>IZX2</b>\n\n"
+	ret += "<pre>" + spew.Sdump(zone.Izx2) + "</pre>\n"
+	ret += "</div>\n"
+	ret += "<div class=\"textbox\"><b>IZX3</b>\n\n"
+	ret += "<pre>" + spew.Sdump(zone.Izx3) + "</pre>\n"
+	ret += "</div>\n"
+	ret += "<div class=\"textbox\"><b>IZX4</b>\n\n"
+	ret += "<p>" + spew.Sdump(zone.Izx4a) + "</p>\n"
+	ret += "<pre>" + spew.Sdump(zone.Izx4b) + "</pre>\n"
+	ret += "</div>\n"
+
+	ret += "<div class=\"textbox\"><b>Action Triggers</b>\n\n"
+	for _, a := range zone.Iact {
+		ret += "<pre>" + spew.Sdump(a) + "</pre>"
+	}
+	ret += "</div>\n"
 
 	ret += "<div class=\"mapcontainer\">\n"
 	ret += "<b>Terrain</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Terrain, zone.Width, zone.Height)
 	ret += "<b>Objects</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Objects, zone.Width, zone.Height)
-	ret += "<b>Overlay</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Overlay, zone.Width, zone.Height) + "\n</div>\n<br></br>\n\n"
+	ret += "<b>Overlay</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Overlay, zone.Width, zone.Height) + "</div>\n"
+	ret += "\n</body>\n</html>"
 
 	return
 }
