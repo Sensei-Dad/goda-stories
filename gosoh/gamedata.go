@@ -114,7 +114,7 @@ type ZoneInfo struct {
 		Overlay []int
 	}
 	TileTriggers []TileTrigger
-	ZoneActions  []ZoneAction
+	ZoneActors   []ZoneActor
 	RewardItems  []int // IZX2
 	QuestNPCs    []int // IZX3
 	Izx4a        int
@@ -122,10 +122,12 @@ type ZoneInfo struct {
 	Iact         [][]byte
 }
 
-type ZoneAction struct {
-	Instruction []int
-	Args        []byte
-	Unknown     []byte
+type ZoneActor struct {
+	CreatureId int
+	ZoneX      int
+	ZoneY      int
+	Args       []byte
+	Unknown    []byte
 }
 
 type TileInfo struct {
@@ -198,4 +200,16 @@ func GetItemName(tNum int, iList []ItemInfo) (ret string) {
 	}
 
 	return
+}
+
+func GetCreatureInfo(cNum int, cList []CreatureInfo) CreatureInfo {
+	for _, c := range cList {
+		if c.Id == cNum {
+			return c
+		}
+	}
+	return CreatureInfo{
+		Id:   -1,
+		Name: "UNKNOWN",
+	}
 }

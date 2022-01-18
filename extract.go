@@ -352,30 +352,39 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 		}
 	}
 
-	// IZAX: Zone Actions (e.g. the X-Wing landing that happen when you enter Dagobah)
+	// IZAX: Zone Actors (e.g. enemy creatures wandering around the map when it loads)
 	// 4B header, 2B section length
 	//   2B unused, 2B Unknown, and 2B to count X 44B commands afterward
-	//   X * 44B Actions
-	//     6B Instruction, 6B Args, and the rest is usually just FF?
+	//   X * 44B Actors
+	//     2B Creature ID
+	//     4B X and Y coord on the map where it spawns
+	//     6B Args
+	//     ...and the rest is usually just FF? What are the rest of these bytes for?
 	// 4B unused
 	offset += 6
 	sectionLength := int(binary.LittleEndian.Uint16(zData[offset:]))
 	offset += 2
 	izax := zData[offset : offset+sectionLength-6]
 	numItems := int(binary.LittleEndian.Uint16(zData[offset+4:]))
-	z.ZoneActions = make([]gosoh.ZoneAction, numItems)
+	z.ZoneActors = make([]gosoh.ZoneActor, numItems)
 	if numItems > 0 {
 		for i := 0; i < numItems; i++ {
-			zax := gosoh.ZoneAction{
-				Args:    izax[12+(44*i) : 18+(44*i)],
-				Unknown: (izax[18+(44*i) : 50+(44*i)]),
+			zax := gosoh.ZoneActor{
+				CreatureId: int(binary.LittleEndian.Uint16(izax[6+(44*i):])),
+				ZoneX:      int(binary.LittleEndian.Uint16(izax[8+(44*i):])),
+				ZoneY:      int(binary.LittleEndian.Uint16(izax[10+(44*i):])),
+				Args:       izax[12+(44*i) : 18+(44*i)],
 			}
-			zax.Instruction = make([]int, 3)
-			zax.Instruction[0] = int(binary.LittleEndian.Uint16(izax[6+(44*i):]))
-			zax.Instruction[1] = int(binary.LittleEndian.Uint16(izax[8+(44*i):]))
-			zax.Instruction[2] = int(binary.LittleEndian.Uint16(izax[10+(44*i):]))
+			chk := 0
+			for _, x := range izax[18+(44*i) : 50+(44*i)] {
+				chk += int(x)
+			}
 
-			z.ZoneActions[i] = zax
+			if chk != 8160 { // 32 * 0xFF is all 'empties'
+				zax.Unknown = (izax[18+(44*i) : 50+(44*i)])
+			}
+
+			z.ZoneActors[i] = zax
 		}
 	}
 
@@ -437,10 +446,9 @@ func processPuzzleData(pData []byte, numTiles int) (ret []gosoh.PuzzleInfo) {
 		if p.Id == 65535 { // End of puzzle section: we're out!
 			return
 		}
-		// fmt.Printf("  [processPuzzleData] Parsing puzzle text %03d\n", p.Id)
 		offset += 6
 
-		// (X - 2) bytes to hold the puzzle text:
+		// (X - 2) bytes to hold the puzzle text
 		puzzleLength := int(binary.LittleEndian.Uint16(pData[offset:]))
 		puzBytes := pData[offset+2 : offset+puzzleLength]
 		// TODO: interpret 0x20 as a "newline" for dialogs?
