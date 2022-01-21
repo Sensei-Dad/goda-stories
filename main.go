@@ -20,11 +20,34 @@ func main() {
 	var itemInfo []gosoh.ItemInfo
 	var puzzleInfo []gosoh.PuzzleInfo
 	var creatureInfo []gosoh.CreatureInfo
+	var soundList []string
 
-	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo = processYodaFile(yodaFile, true)
+	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList = processYodaFile(yodaFile)
 
 	// Init the game...
-	g := NewGame(tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo)
+	g := NewGame(tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList)
+
+	// create various output files
+	if true {
+		err := dumpToFile(tileInfoFile, tileInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(itemInfoFile, itemInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(puzzleInfoFile, puzzleInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = dumpToFile(crtrInfoText, creatureInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		saveHTMLMaps(g)
+	}
 
 	ebiten.SetWindowResizable(true)
 	ebiten.SetWindowTitle("Goda Stories")

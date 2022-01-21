@@ -15,13 +15,14 @@ import (
 	"github.com/ghostiam/binstruct"
 )
 
-func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gosoh.ZoneInfo, []gosoh.ItemInfo, []gosoh.PuzzleInfo, []gosoh.CreatureInfo) {
+func processYodaFile(fileName string) ([]gosoh.TileInfo, []gosoh.ZoneInfo, []gosoh.ItemInfo, []gosoh.PuzzleInfo, []gosoh.CreatureInfo, []string) {
 	yodaFilePath := "data/" + fileName
 	outTiles := make([]gosoh.TileInfo, 0)
 	outZones := make([]gosoh.ZoneInfo, 0)
 	outItems := make([]gosoh.ItemInfo, 0)
 	outPuzzles := make([]gosoh.PuzzleInfo, 0)
 	outCreatures := make([]gosoh.CreatureInfo, 0)
+	outSounds := make([]string, 0)
 
 	file, err := os.Open(yodaFilePath)
 	if err != nil {
@@ -54,7 +55,7 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 			_, _ = reader.ReadByte()
 			minor, _ := reader.ReadByte()
 			fmt.Printf("    Detected version: %d.%d\n", major, minor)
-		case "STUP", "SNDS", "CHWP", "CAUX":
+		case "STUP", "CHWP", "CAUX":
 			// Basically, just skip all these sections
 			sectionLength, _ := reader.ReadUint32()
 			_, _, err := reader.ReadBytes(int(sectionLength))
@@ -134,6 +135,14 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 				log.Fatal(err)
 			}
 			outCreatures = chars
+		case "SNDS":
+			sectionLength, _ := reader.ReadUint32()
+			_, soundData, err := reader.ReadBytes(int(sectionLength))
+			outSounds = processSoundList(soundData)
+			if err != nil {
+				fmt.Printf("Error reading section %s\n", s)
+				log.Fatal(err)
+			}
 		case "ENDF":
 			// Read whatever odd bytes are left?
 			_, err = reader.ReadAll()
@@ -146,43 +155,9 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 		}
 	}
 
-	// create various output files
-	if dumpOutputs {
-		err = dumpToFile(tileInfoFile, outTiles)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(itemInfoFile, outItems)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(puzzleInfoFile, outPuzzles)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(crtrInfoText, outCreatures)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Save action triggers
-		outTriggers := ""
-		for i, z := range outZones {
-			for j, t := range z.ActionTriggers {
-				outTriggers += fmt.Sprintf("%03d,%02d,%s \n", i, j, spew.Sdump(t))
-			}
-		}
-		err = printToFile(mapInfoText, outTriggers)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		saveHTMLMaps(outZones, outItems, outCreatures)
-	}
-
 	fmt.Printf("[%s] Processed data file.\n", yodaFile)
 
-	return outTiles, outZones, outItems, outPuzzles, outCreatures
+	return outTiles, outZones, outItems, outPuzzles, outCreatures, outSounds
 }
 
 func processTileData(tileId int, flags uint32) gosoh.TileInfo {
@@ -650,6 +625,18 @@ func processCharList(cData []byte) (ret []gosoh.CreatureInfo) {
 
 		ret = append(ret, cInfo)
 	}
+	return
+}
+
+func processSoundList(sData []byte) (ret []string) {
+	ret = make([]string, 0)
+	offset := 2
+	for offset < len(sData) {
+		strLen := int(binary.LittleEndian.Uint16(sData[offset:]))
+		ret = append(ret, string(sData[offset+2:offset+strLen+2]))
+		offset = offset + strLen + 2
+	}
+
 	return
 }
 

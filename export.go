@@ -18,7 +18,7 @@ const itemInfoFile = "assets/text/itemInfo.txt"
 const puzzleInfoFile = "assets/text/puzzleInfo.txt"
 const crtrInfoText = "assets/text/creatureInfo.txt"
 
-const mapInfoText = "assets/text/mapInfo.txt"
+// const mapInfoText = "assets/text/mapInfo.txt"
 const mapInfoHtml = "assets/maps/mapInfo.html"
 const mapInfoMapFile = "assets/maps/map_%03d.html"
 
@@ -118,21 +118,21 @@ func printToFile(filepath string, foo string) error {
 	return err
 }
 
-func saveHTMLMaps(zList []gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.CreatureInfo) {
+func saveHTMLMaps(g *Game) {
 	// Save map info to HTML and images to PNGs
 	fmt.Println("[saveHTMLMaps] Stitching maps...")
 	mapsList := htmlStarter
 	mapsList += "<h1>Yoda Stories Map Info</h1>\n<table style=\"font-size: 1.2em;\">\n"
 	mapsList += "<tr><th>Zone</th><th>Biome</th><th>Size</th><th>Type</th><th>Izx4b</th></tr>\n"
 
-	for zId, zData := range zList {
+	for zId, zData := range gosoh.Zones {
 		mapNum := fmt.Sprintf("%03d", zId)
 		mapImagePath := "assets/maps/map_" + mapNum + ".png"
 
 		// Add entry to the main list and create a map HTML
 		mapsList += fmt.Sprintf("<tr><td><a href=\"map_%03d.html\">Zone %03d</a></td>", zId, zId)
 		mapsList += fmt.Sprintf("<td>%s</td><td>%dx%d</td><td>%s</td><td><pre>%s</pre></td></tr>\n", zData.Biome, zData.Width, zData.Height, zData.Type, zData.Izx4b)
-		mapFile := getZoneHTML(zData, iList, cList)
+		mapFile := getZoneHTML(zData)
 		mapFilePath := fmt.Sprintf(mapInfoMapFile, zId)
 
 		// Save the map image if not present
@@ -147,13 +147,13 @@ func saveHTMLMaps(zList []gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.
 		// Save the map info as an HTML file
 		printToFile(mapFilePath, mapFile)
 	}
-	fmt.Printf("    %d maps extracted.\n", len(zList))
+	fmt.Printf("    %d maps extracted.\n", len(gosoh.Zones))
 	mapsList += "</table>\n\n</body>\n</html>\n"
 
 	printToFile(mapInfoHtml, mapsList)
 }
 
-func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.CreatureInfo) (ret string) {
+func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	mapName := "map_" + fmt.Sprintf("%03d", zone.Id)
 	// For formatting purposes, stop at 5 maps
 	// if zone.Id > 5 {
@@ -208,7 +208,7 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.Crea
 	if len(zone.RewardItems) > 0 {
 		for _, i := range zone.RewardItems {
 			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
-			ret += fmt.Sprintf("%04d.png\" alt=\"Item %04d\"><p class=\"tileboxname\">%s</p></div>", i, i, gosoh.GetItemName(i, iList))
+			ret += fmt.Sprintf("%04d.png\" alt=\"Item %04d\"><p class=\"tileboxname\">%s</p></div>", i, i, gosoh.GetItemName(i))
 		}
 	} else {
 		ret += "(None)"
@@ -218,9 +218,9 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.Crea
 	ret += "<div class=\"textbox\"><b>Zone Actors</b><br />\n"
 	if len(zone.ZoneActors) > 0 {
 		for _, i := range zone.ZoneActors {
-			cInfo := gosoh.GetCreatureInfo(i.CreatureId, cList)
+			cInfo := gosoh.GetCreatureInfo(i.CreatureId)
 			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
-			ret += fmt.Sprintf("%04d.png\" alt=\"\"><p class=\"tileboxname\">#%d %s (%d, %d)<br /><pre>%s</pre></p></div>", cInfo.Images[gosoh.Down], i.CreatureId, cInfo.Name, i.ZoneX, i.ZoneY, i.Unknown)
+			ret += fmt.Sprintf("%04d.png\" alt=\"\"><p class=\"tileboxname\">#%d %s (%d, %d)<br /></p></div>", cInfo.Images[gosoh.Down], i.CreatureId, cInfo.Name, i.ZoneX, i.ZoneY)
 		}
 	} else {
 		ret += "(None)"

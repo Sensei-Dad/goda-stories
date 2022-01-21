@@ -12,7 +12,7 @@ type Game struct {
 	tick  int64
 }
 
-func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo) *Game {
+func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo, soundList []string) *Game {
 	// TODO: Distinguish between "init game" and "new game"
 	g := &Game{}
 	g.Gui = NewBitmapInterface("assets/font_16x20.png", 16, 20)
@@ -30,6 +30,7 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 	gosoh.Items = itemInfo
 	gosoh.Puzzles = puzzleInfo
 	gosoh.Creatures = creatureInfo
+	gosoh.Sounds = soundList
 
 	g.World = NewWorld()
 

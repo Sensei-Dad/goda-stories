@@ -22,6 +22,7 @@ var Zones []ZoneInfo
 var Creatures []CreatureInfo
 var Puzzles []PuzzleInfo
 var Items []ItemInfo
+var Sounds []string
 
 var Up CardinalDirection = CardinalDirection{Name: "Up", DeltaX: 0, DeltaY: -1}
 var Down CardinalDirection = CardinalDirection{Name: "Down", DeltaX: 0, DeltaY: 1}
@@ -293,9 +294,9 @@ type CollisionBox struct {
 }
 
 // Get a named item, by tile ID
-func GetItemName(tNum int, iList []ItemInfo) (ret string) {
+func GetItemName(tNum int) (ret string) {
 	ret = "UNKNOWN"
-	for _, i := range iList {
+	for _, i := range Items {
 		if i.Id == tNum {
 			ret = i.Name
 		}
@@ -304,8 +305,8 @@ func GetItemName(tNum int, iList []ItemInfo) (ret string) {
 	return
 }
 
-func GetCreatureInfo(cNum int, cList []CreatureInfo) CreatureInfo {
-	for _, c := range cList {
+func GetCreatureInfo(cNum int) CreatureInfo {
+	for _, c := range Creatures {
 		if c.Id == cNum {
 			return c
 		}
@@ -322,12 +323,11 @@ func (a *ActionTrigger) ToString() string {
 		if i == 0 {
 			ret += "When "
 		} else {
-			ret += " and "
+			ret += "\n and "
 		}
-		ret += c.ToString() + "\n"
+		ret += c.ToString()
 	}
-
-	ret += "   Actions:\n"
+	ret += "...\n"
 	for _, a := range a.Actions {
 		ret += "   - " + a.ToString() + "\n"
 	}
@@ -370,9 +370,9 @@ func (t *TriggerCondition) ToString() string {
 	case HasItem:
 		ret = fmt.Sprintf("the Player has item_%03d", t.Args[0])
 	case CheckEndItem:
-		ret = fmt.Sprintf("the Ending item is item_%03d", t.Args[0])
+		ret = fmt.Sprintf("the first Quest item is item_%03d", t.Args[0])
 	case CheckStartItem:
-		ret = fmt.Sprintf("the Starting item is item_%03d", t.Args[0])
+		ret = fmt.Sprintf("the second Quest item is item_%03d", t.Args[0])
 	case Unknown10:
 		ret = "Unknown (10)..."
 	case GameInProgress:
@@ -388,7 +388,7 @@ func (t *TriggerCondition) ToString() string {
 	case Unknown16:
 		ret = "Unknown (16)..."
 	case UseWrongItem:
-		ret = fmt.Sprintf("the Player MISuses item_%03d on tile_%04d at (%d, %d, %d)", t.Args[4], t.Args[3], t.Args[0], t.Args[1], t.Args[2])
+		ret = fmt.Sprintf("the Player uses the wrong item on tile_%04d at (%d, %d, %d)", t.Args[3], t.Args[0], t.Args[1], t.Args[2])
 	case PlayerAtPos:
 		ret = fmt.Sprintf("the Player is at zone coords (%d, %d)", t.Args[0], t.Args[1])
 	case GlobalVarEq:
@@ -441,7 +441,7 @@ func (a *TriggerAction) ToString() string {
 	case WaitTicks:
 		ret = fmt.Sprintf("Wait for %d ticks", a.Args[0])
 	case PlaySound:
-		ret = fmt.Sprintf("Play sound #%d", a.Args[0])
+		ret = fmt.Sprintf("Play \"%s\"", Sounds[a.Args[0]])
 	case FadeIn:
 		ret = "Do the \"Screen-Wipe In\" animation"
 	case RandomNum:
