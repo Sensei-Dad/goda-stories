@@ -18,7 +18,7 @@ const itemInfoFile = "assets/text/itemInfo.txt"
 const puzzleInfoFile = "assets/text/puzzleInfo.txt"
 const crtrInfoText = "assets/text/creatureInfo.txt"
 
-// const mapInfoText = "assets/text/mapInfo.txt"
+const mapInfoText = "assets/text/mapInfo.txt"
 const mapInfoHtml = "assets/maps/mapInfo.html"
 const mapInfoMapFile = "assets/maps/map_%03d.html"
 
@@ -220,7 +220,7 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.Crea
 		for _, i := range zone.ZoneActors {
 			cInfo := gosoh.GetCreatureInfo(i.CreatureId, cList)
 			ret += "<div class=\"tilebox\"><img src=\"../tiles/tile_"
-			ret += fmt.Sprintf("%04d.png\" alt=\"Creature %04d\"><p class=\"tileboxname\">%s (%d, %d)<br /><pre>%s</pre></p></div>", cInfo.Images[gosoh.Down], i.CreatureId, cInfo.Name, i.ZoneX, i.ZoneY, i.Unknown)
+			ret += fmt.Sprintf("%04d.png\" alt=\"\"><p class=\"tileboxname\">#%d %s (%d, %d)<br /><pre>%s</pre></p></div>", cInfo.Images[gosoh.Down], i.CreatureId, cInfo.Name, i.ZoneX, i.ZoneY, i.Unknown)
 		}
 	} else {
 		ret += "(None)"
@@ -233,8 +233,8 @@ func getZoneHTML(zone gosoh.ZoneInfo, iList []gosoh.ItemInfo, cList []gosoh.Crea
 	ret += "</div>\n"
 
 	ret += "<div class=\"textbox\"><b>Action Triggers</b><br />\n\n"
-	for _, a := range zone.Iact {
-		ret += "<pre>" + spew.Sdump(a) + "</pre>"
+	for _, a := range zone.ActionTriggers {
+		ret += "<div class=\"textbox\"><pre>" + a.ToString() + "</pre></div>"
 	}
 	ret += "</div>\n"
 

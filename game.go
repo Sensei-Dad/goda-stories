@@ -75,8 +75,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
-	// for now, return the map with nothing else around it
-	return gosoh.ViewportWidth * gosoh.TileWidth, gosoh.ViewportHeight * gosoh.TileHeight
+	// 720x360 internal dimensions, by default
+	// 16:9 aspect ratio, with plenty of scaling
+	return 720, 360
 }
 
 func (g *Game) CenterViewport(a gosoh.MapArea) {

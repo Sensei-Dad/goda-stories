@@ -25,8 +25,10 @@ func main() {
 
 	// Init the game...
 	g := NewGame(tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo)
+
 	ebiten.SetWindowResizable(true)
 	ebiten.SetWindowTitle("Goda Stories")
+	ebiten.MaximizeWindow()
 
 	// ...and run it
 	if err := ebiten.RunGame(g); err != nil {

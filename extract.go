@@ -160,11 +160,19 @@ func processYodaFile(fileName string, dumpOutputs bool) ([]gosoh.TileInfo, []gos
 		if err != nil {
 			log.Fatal(err)
 		}
-		// err = dumpToFile(mapInfoText, outZones)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
 		err = dumpToFile(crtrInfoText, outCreatures)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Save action triggers
+		outTriggers := ""
+		for i, z := range outZones {
+			for j, t := range z.ActionTriggers {
+				outTriggers += fmt.Sprintf("%03d,%02d,%s \n", i, j, spew.Sdump(t))
+			}
+		}
+		err = printToFile(mapInfoText, outTriggers)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -327,7 +335,7 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 		"vehicle_to_secondary_map",
 		"vehicle_to_primary_map",
 		"object_gives_locator",
-		"crate_with_item",
+		"item_related_trigger",
 		"puzzle_NPC",
 		"crate_with_weapon",
 		"map_entrance",
@@ -423,14 +431,60 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	rep := strings.NewReplacer("1", "Y", "0", ".")
 	z.Izx4b = rep.Replace(zFlags)
 	offset += 8
+	trigz := make([][]byte, 0)
 
 	// Parse actions, if there are any
 	for len(zData) >= offset+4 {
 		// IACT + sectionLength = 8 bytes
 		sectionLength = int(binary.LittleEndian.Uint32(zData[offset+4:]))
 		offset += 8
-		z.Iact = append(z.Iact, zData[offset:offset+sectionLength])
+		trigz = append(trigz, zData[offset:offset+sectionLength])
 		offset += sectionLength
+	}
+
+	z.ActionTriggers = make([]gosoh.ActionTrigger, len(trigz))
+	for i, act := range trigz {
+		// Different offset for the trigger data
+		tOffset := 0
+		numTriggers = int(binary.LittleEndian.Uint16(act[0:]))
+		fmt.Printf("   Found %d trigger(s)", numTriggers)
+		trg := gosoh.ActionTrigger{}
+		trg.Conditions = make([]gosoh.TriggerCondition, numTriggers)
+		tOffset += 2
+		for x := 0; x < numTriggers; x++ { // Each condition is 14B
+			con := gosoh.TriggerCondition{
+				Condition: gosoh.TriggerConditionType(act[tOffset]),
+			}
+			con.Args = make([]int, 6)
+			for y := 0; y < 6; y++ {
+				con.Args[y] = int(binary.LittleEndian.Uint16(act[2+tOffset+(2*y):]))
+			}
+			trg.Conditions[x] = con
+			tOffset += 14
+		}
+		numActions := int(binary.LittleEndian.Uint16(act[tOffset:]))
+		fmt.Printf(" and %d action(s)...\n", numActions)
+		trg.Actions = make([]gosoh.TriggerAction, numActions)
+		tOffset += 2
+		for x := 0; x < numActions; x++ {
+			actn := gosoh.TriggerAction{
+				Action: gosoh.TriggerActionType(act[tOffset]),
+			}
+			actn.Args = make([]int, 5)
+			for y := 0; y < 5; y++ {
+				actn.Args[y] = int(binary.LittleEndian.Uint16(act[2+tOffset+(2*y):]))
+			}
+			strLen := int(binary.LittleEndian.Uint16(act[tOffset+12:]))
+			if strLen > 0 {
+				actn.Text = string(act[tOffset+14 : tOffset+strLen+14])
+				tOffset += strLen
+			}
+			trg.Actions[x] = actn
+
+			tOffset += 14
+		}
+
+		z.ActionTriggers[i] = trg
 	}
 
 	return z
