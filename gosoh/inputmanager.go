@@ -87,12 +87,12 @@ func ShowDebugInfo(screen *ebiten.Image, viewX, viewY float64) {
 	ebitenutil.DebugPrint(screen, out)
 }
 
-func DrawEntityBoxes(screen *ebiten.Image, viewX, viewY float64) {
+func DrawEntityBoxes(screen *ebiten.Image, viewX, viewY, viewOffset float64) {
 	for _, result := range collideView.Get() {
 		var box CollisionBox
 		col := result.Components[collideComp].(*Collidable)
 		pos := result.Components[positionComp].(*Position)
-		box = col.GetBox(pos.X-viewX, pos.Y-viewY)
+		box = col.GetBox(pos.X-viewX+viewOffset, pos.Y-viewY+viewOffset)
 		DrawBox(screen, box)
 	}
 }

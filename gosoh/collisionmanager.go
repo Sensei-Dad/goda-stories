@@ -49,11 +49,11 @@ func DrawBox(screen *ebiten.Image, box CollisionBox) {
 	ebitenutil.DrawLine(screen, box.X+0.5*box.Width, box.Y+0.4*box.Height, box.X+0.5*box.Width, box.Y+0.6*box.Height, clr)
 }
 
-func DrawTileBox(screen *ebiten.Image, box CollisionBox, viewX, viewY float64) {
+func DrawTileBox(screen *ebiten.Image, box CollisionBox, viewX, viewY, viewOffset float64) {
 	var clr color.Color = color.RGBA{R: 0, G: 255, B: 0, A: 255}
 
-	ebitenutil.DrawLine(screen, box.X-viewX, box.Y-viewY, box.X+box.Width-viewX, box.Y-viewY, clr)
-	ebitenutil.DrawLine(screen, box.X+box.Width-viewX, box.Y-viewY, box.X+box.Width-viewX, box.Y+box.Height-viewY, clr)
-	ebitenutil.DrawLine(screen, box.X+box.Width-viewX, box.Y+box.Height-viewY, box.X-viewX, box.Y+box.Height-viewY, clr)
-	ebitenutil.DrawLine(screen, box.X-viewX, box.Y+box.Height-viewY, box.X-viewX, box.Y-viewY, clr)
+	ebitenutil.DrawLine(screen, box.X-viewX+viewOffset, box.Y-viewY+viewOffset, box.X+box.Width-viewX+viewOffset, box.Y-viewY+viewOffset, clr)
+	ebitenutil.DrawLine(screen, box.X+box.Width-viewX+viewOffset, box.Y-viewY+viewOffset, box.X+box.Width-viewX+viewOffset, box.Y+box.Height-viewY+viewOffset, clr)
+	ebitenutil.DrawLine(screen, box.X+box.Width-viewX+viewOffset, box.Y+box.Height-viewY+viewOffset, box.X-viewX+viewOffset, box.Y+box.Height-viewY+viewOffset, clr)
+	ebitenutil.DrawLine(screen, box.X-viewX+viewOffset, box.Y+box.Height-viewY+viewOffset, box.X-viewX+viewOffset, box.Y-viewY+viewOffset, clr)
 }

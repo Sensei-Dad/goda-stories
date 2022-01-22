@@ -1,6 +1,9 @@
 package main
 
 import (
+	"image/color"
+	"math"
+
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -17,11 +20,15 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 	g := &Game{}
 	g.Gui = NewBitmapInterface("assets/font_16x20.png", 16, 20)
 
+	// Viewport is 12:10 ratio
+	vHeight := float64(WindowHeight - (2 * ElementBuffer))
+	vWidth := math.Round(vHeight * 1.2)
+
 	g.View = ViewCoords{
 		X:      0.0,
 		Y:      0.0,
-		Width:  float64(gosoh.ViewportWidth * gosoh.TileWidth),
-		Height: float64(gosoh.ViewportHeight * gosoh.TileHeight),
+		Width:  vWidth,
+		Height: vHeight,
 	}
 
 	gosoh.LoadAllTiles(tileInfo)
@@ -59,26 +66,26 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the map and entities
 	currentArea = g.GetCurrentArea()
-	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
+	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 	// TODO: draw a walk mask
-	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
-	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y)
-	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height)
+	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
+	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ElementBuffer))
+	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 
-	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
-	// op := &ebiten.DrawImageOptions{}
-	// op.GeoM.Translate(10, 10)
-	// screen.DrawImage(splash, op)
+	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(10, 10)
+	screen.DrawImage(splash, op)
 
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
-	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y)
+	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ElementBuffer))
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
-	// 720x360 internal dimensions, by default
+	// 640x360 internal dimensions, by default
 	// 16:9 aspect ratio, with plenty of scaling
-	return 720, 360
+	return WindowWidth, WindowHeight
 }
 
 func (g *Game) CenterViewport(a gosoh.MapArea) {

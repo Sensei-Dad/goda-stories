@@ -4,7 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-func ProcessRenderables(screen *ebiten.Image, vpX, vpY float64) {
+func ProcessRenderables(screen *ebiten.Image, vpX, vpY, vpOffset float64) {
 	for _, result := range drawView.Get() {
 		// TODO: Handle loading / unloading different Enty's as the player comes near
 		img := result.Components[renderableComp].(*Renderable)
@@ -16,7 +16,7 @@ func ProcessRenderables(screen *ebiten.Image, vpX, vpY float64) {
 
 		op := &ebiten.DrawImageOptions{}
 		// Position, in an Entity's case, indicates the center of their bounding box
-		op.GeoM.Translate(pos.X-(float64(TileWidth)/2)-vpX, pos.Y-(float64(TileHeight)/2)-vpY)
+		op.GeoM.Translate(pos.X-(float64(TileWidth)/2)-vpX+vpOffset, pos.Y-(float64(TileHeight)/2)-vpY+vpOffset)
 		screen.DrawImage(img.Image, op)
 	}
 }

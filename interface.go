@@ -9,6 +9,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+// Globals related to the UI
+const ElementBuffer int = 5
+const WindowWidth, WindowHeight int = 640, 360
+
 // If the order of characters in the first part of the image changes, this string needs to be updated
 const fontChars string = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 

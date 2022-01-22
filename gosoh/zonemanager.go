@@ -262,7 +262,7 @@ func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
 }
 
 // Draw a layer to the screen
-func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, viewWidth, viewHeight float64) {
+func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, viewWidth, viewHeight, viewOffset float64) {
 	viewBox := CollisionBox{
 		X:      viewX,
 		Y:      viewY,
@@ -285,10 +285,10 @@ func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, v
 				}
 				tile := GetTileImage(tNum)
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(a.Tiles[x][y].Box.X-viewX, a.Tiles[x][y].Box.Y-viewY)
+				op.GeoM.Translate(a.Tiles[x][y].Box.X-viewX+viewOffset, a.Tiles[x][y].Box.Y-viewY+viewOffset)
 				// Draw the box, if it's collidable
 				if !a.Tiles[x][y].IsWalkable {
-					DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y)
+					DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y, viewOffset)
 				}
 				screen.DrawImage(tile, op)
 			}

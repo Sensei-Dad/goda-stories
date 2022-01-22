@@ -12,7 +12,6 @@ import (
 var playerSpeed float64 = 2.0
 
 const TileWidth, TileHeight int = 32, 32
-const ViewportWidth, ViewportHeight int = 12, 10
 
 var ECSManager *ecs.Manager
 var ECSTags map[string]ecs.Tag
@@ -138,42 +137,42 @@ type TriggerConditionType byte
 type TriggerActionType byte
 
 const (
-	FirstEnter     TriggerConditionType = 0x00
-	Enter          TriggerConditionType = 0x01
-	BumpTile       TriggerConditionType = 0x02
-	UseItem        TriggerConditionType = 0x03
-	Walk           TriggerConditionType = 0x04
-	TempVarEq      TriggerConditionType = 0x05
-	RandVarEq      TriggerConditionType = 0x06
-	RandVarGt      TriggerConditionType = 0x07
-	RandVarLt      TriggerConditionType = 0x08
-	EnterVehicle   TriggerConditionType = 0x09
-	CheckTile      TriggerConditionType = 0x0A
-	EnemyDead      TriggerConditionType = 0x0B
-	AllEnemiesDead TriggerConditionType = 0x0C
-	HasItem        TriggerConditionType = 0x0D
-	CheckEndItem   TriggerConditionType = 0x0E
-	CheckStartItem TriggerConditionType = 0x0F
-	Unknown10      TriggerConditionType = 0x10
-	GameInProgress TriggerConditionType = 0x11
-	GameCompleted  TriggerConditionType = 0x12
-	HealthLt       TriggerConditionType = 0x13
-	HealthGt       TriggerConditionType = 0x14
-	Unknown15      TriggerConditionType = 0x15
-	Unknown16      TriggerConditionType = 0x16
-	UseWrongItem   TriggerConditionType = 0x17
-	PlayerAtPos    TriggerConditionType = 0x18
-	GlobalVarEq    TriggerConditionType = 0x19
-	GlobalVarLt    TriggerConditionType = 0x1A
-	GlobalVarGt    TriggerConditionType = 0x1B
-	ExperienceEq   TriggerConditionType = 0x1C
-	Unknown1D      TriggerConditionType = 0x1D
-	Unknown1E      TriggerConditionType = 0x1E
-	TempVarNe      TriggerConditionType = 0x1F
-	RandVarNe      TriggerConditionType = 0x20
-	GlobalVarNe    TriggerConditionType = 0x21
-	CheckTileVar   TriggerConditionType = 0x22
-	ExperienceGt   TriggerConditionType = 0x23
+	FirstEnter      TriggerConditionType = 0x00
+	Enter           TriggerConditionType = 0x01
+	BumpTile        TriggerConditionType = 0x02
+	UseItem         TriggerConditionType = 0x03
+	Walk            TriggerConditionType = 0x04
+	TempVarEq       TriggerConditionType = 0x05
+	RandVarEq       TriggerConditionType = 0x06
+	RandVarGt       TriggerConditionType = 0x07
+	RandVarLt       TriggerConditionType = 0x08
+	EnterVehicle    TriggerConditionType = 0x09
+	CheckTile       TriggerConditionType = 0x0A
+	EnemyDead       TriggerConditionType = 0x0B
+	AllEnemiesDead  TriggerConditionType = 0x0C
+	HasItem         TriggerConditionType = 0x0D
+	CheckQuestItem1 TriggerConditionType = 0x0E
+	CheckQuestItem2 TriggerConditionType = 0x0F
+	Unknown10       TriggerConditionType = 0x10
+	GameInProgress  TriggerConditionType = 0x11
+	GameCompleted   TriggerConditionType = 0x12
+	HealthLt        TriggerConditionType = 0x13
+	HealthGt        TriggerConditionType = 0x14
+	Unknown15       TriggerConditionType = 0x15
+	Unknown16       TriggerConditionType = 0x16
+	UseWrongItem    TriggerConditionType = 0x17
+	PlayerAtPos     TriggerConditionType = 0x18
+	GlobalVarEq     TriggerConditionType = 0x19
+	GlobalVarLt     TriggerConditionType = 0x1A
+	GlobalVarGt     TriggerConditionType = 0x1B
+	ExperienceEq    TriggerConditionType = 0x1C
+	Unknown1D       TriggerConditionType = 0x1D
+	Unknown1E       TriggerConditionType = 0x1E
+	TempVarNe       TriggerConditionType = 0x1F
+	RandVarNe       TriggerConditionType = 0x20
+	GlobalVarNe     TriggerConditionType = 0x21
+	CheckTileVar    TriggerConditionType = 0x22
+	ExperienceGt    TriggerConditionType = 0x23
 )
 
 const (
@@ -369,9 +368,9 @@ func (t *TriggerCondition) ToString() string {
 		ret = "all enemies are dead"
 	case HasItem:
 		ret = fmt.Sprintf("the Player has item_%03d", t.Args[0])
-	case CheckEndItem:
+	case CheckQuestItem1:
 		ret = fmt.Sprintf("the first Quest item is item_%03d", t.Args[0])
-	case CheckStartItem:
+	case CheckQuestItem2:
 		ret = fmt.Sprintf("the second Quest item is item_%03d", t.Args[0])
 	case Unknown10:
 		ret = "Unknown (10)..."
