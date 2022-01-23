@@ -292,11 +292,11 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 
 	// Grab tiles starting at byte 22: each one has 3x two-byte ints, for 3 tiles / cell
 	z.TileMaps.Terrain = make([]int, z.Width*z.Height)
-	z.TileMaps.Objects = make([]int, z.Width*z.Height)
+	z.TileMaps.Walls = make([]int, z.Width*z.Height)
 	z.TileMaps.Overlay = make([]int, z.Width*z.Height)
 	for j := 0; j < (z.Width * z.Height); j++ {
 		z.TileMaps.Terrain[j] = int(binary.LittleEndian.Uint16(zData[6*j+22:]))
-		z.TileMaps.Objects[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
+		z.TileMaps.Walls[j] = int(binary.LittleEndian.Uint16(zData[6*j+24:]))
 		z.TileMaps.Overlay[j] = int(binary.LittleEndian.Uint16(zData[6*j+26:]))
 	}
 
@@ -306,13 +306,13 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 
 	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
-		z.TileHotspots = make([]gosoh.TileHotspot, numTriggers)
+		z.Hotspots = make([]gosoh.ZoneHotspot, numTriggers)
 		for k := 0; k < numTriggers; k++ {
-			z.TileHotspots[k].Type = gosoh.TriggerHotspotType(int(binary.LittleEndian.Uint16(zData[offset+2:])))
-			z.TileHotspots[k].Id = k
-			z.TileHotspots[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
-			z.TileHotspots[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
-			z.TileHotspots[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
+			z.Hotspots[k].Type = gosoh.TriggerHotspotType(int(binary.LittleEndian.Uint16(zData[offset+2:])))
+			z.Hotspots[k].Id = k
+			z.Hotspots[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
+			z.Hotspots[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
+			z.Hotspots[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
 			offset += 12
 		}
 	}

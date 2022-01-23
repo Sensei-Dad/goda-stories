@@ -4,13 +4,14 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/MasterShizzle/goda-stories/ebitileui"
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
 	World *GameWorld
-	Gui   *BitmapInterface
+	Gui   *ebitileui.BitmapInterface
 	View  ViewCoords
 	tick  int64
 }
@@ -18,11 +19,11 @@ type Game struct {
 func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo, soundList []string) *Game {
 	// TODO: Distinguish between "init game" and "new game"
 	g := &Game{}
-	g.Gui = NewBitmapInterface("assets/font_16x20.png", 16, 20)
+	g.Gui = ebitileui.NewBitmapInterface("assets/font_16x20.png", 16, 20)
 
 	// Viewport is 12:10 ratio
-	vHeight := float64(WindowHeight - (2 * ElementBuffer))
-	vWidth := math.Round(vHeight * ViewAspectRatio)
+	vHeight := float64(ebitileui.WindowHeight - (2 * ebitileui.ElementBuffer))
+	vWidth := math.Round(vHeight * ebitileui.ViewAspectRatio)
 
 	g.View = ViewCoords{
 		X:      0.0,
@@ -64,12 +65,12 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw the map and entities
-	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
-	// TODO: draw a walk mask
-	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
-	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ElementBuffer))
-	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
+	// Draw the Viewport
+	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
+	// TODO: Walls and Renderables need to be drawn at the same time
+	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
+	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ebitileui.ElementBuffer))
+	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
 
 	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
 	op := &ebiten.DrawImageOptions{}
@@ -78,13 +79,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
-	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ElementBuffer))
+	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebitileui.ElementBuffer))
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// 640x360 internal dimensions, by default
 	// 16:9 aspect ratio, with plenty of scaling
-	return WindowWidth, WindowHeight
+	return ebitileui.WindowWidth, ebitileui.WindowHeight
 }
 
 func (g *Game) CenterViewport(a *gosoh.MapArea) {

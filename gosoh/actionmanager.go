@@ -1,6 +1,9 @@
 package gosoh
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // Action manager:
 // - move stuff around the map
@@ -11,90 +14,56 @@ func ProcessMovement(a *MapArea) {
 		moves := result.Components[movementComp].(*Movable)
 		pos := result.Components[positionComp].(*Position)
 		crtr := result.Components[creatureComp].(*Creature)
-		col := result.Components[collideComp].(*Collidable)
-
-		// Update the tile we're considered to be "in"
-		pos.TileX = int(pos.X / float64(TileWidth))
-		pos.TileY = int(pos.Y / float64(TileHeight))
+		// col := result.Components[collideComp].(*Collidable)
 
 		if moves.Direction.IsDirection() && crtr.CanMove {
-			nudgeX := float64(moves.Direction.DeltaX) * moves.Speed
-			nudgeY := float64(moves.Direction.DeltaY) * moves.Speed
+			// Calculate new position
+			newX := pos.TileX + moves.Direction.DeltaX
+			newY := pos.TileY + moves.Direction.DeltaY
 
-			newX := pos.X + nudgeX
-			newY := pos.Y + nudgeY
-
-			var pBox, tBox CollisionBox
-			pBox = col.GetBox(newX, newY)
-
-			// Check which tiles overlap at the new location
-			topLeft, topRight, bottomLeft, bottomRight := a.CheckCorners(pBox)
-			var horizOk, vertOk bool
-
-			// There's probably a more elegant way to loop this
-			// TODO: Check for diagonals, allow "jumps"
-			if moves.Direction.DeltaX > 0 { // Look rightward
-				if moves.Direction.IsDiagonal() {
-					if moves.Direction.DeltaY < 0 {
-						horizOk = !topRight
-					} else {
-						horizOk = !bottomRight
-					}
-				} else {
-					horizOk = !(topRight || bottomRight)
-				}
-			} else { // Leftward
-				if moves.Direction.IsDiagonal() {
-					if moves.Direction.DeltaY < 0 {
-						horizOk = !topLeft
-					} else {
-						horizOk = !bottomLeft
-					}
-				} else {
-					horizOk = !(topLeft || bottomLeft)
-				}
-			}
-			if moves.Direction.DeltaY > 0 { // Upward
-				if moves.Direction.IsDiagonal() {
-					if moves.Direction.DeltaX < 0 {
-						vertOk = !topLeft
-					} else {
-						vertOk = !topRight
-					}
-				} else {
-					vertOk = !(topRight || topLeft)
-				}
-			} else { // Downward
-				if moves.Direction.IsDiagonal() {
-					if moves.Direction.DeltaX < 0 {
-						vertOk = !bottomLeft
-					} else {
-						vertOk = !bottomRight
-					}
-				} else {
-					vertOk = !(bottomRight || bottomLeft)
-				}
-			}
-
+			// Check the map
+			tileIsOpen := a.Tiles[newX][newY].IsWalkable
 			// Check all the collidables for common destinations, except for itself
+			// TODO: Only check the active ones
 			for _, thing := range collideView.Get() {
-				// This is ugly, but manageable since we're only ever checking against one pool of stuff
 				pos2 := thing.Components[positionComp].(*Position)
-				col2 := thing.Components[collideComp].(*Collidable)
-				tBox = col2.GetBox(pos2.X, pos2.Y)
-				if col2.IsBlocking && pBox.Overlaps(tBox) && thing.Entity.ID != result.Entity.ID {
-					fmt.Println("Found blocking Entity")
+				if pos2.TileX == newX && pos2.TileY == newY {
+					tileIsOpen = false
 				}
 			}
-
-			fmt.Printf("HMove: %t, VMove: %t\n", horizOk, vertOk)
-
-			// Move, if possible
-			if pBox.X == ClampFloat(pBox.X, 0, float64(a.Width*TileWidth*18)) && horizOk {
-				pos.X = newX
+			if !tileIsOpen {
+				// TODO: Send "Bump" event
+				fmt.Printf("Tile (%d, %d) is blocked", newX, newY)
+				crtr.CanMove = true
+				crtr.State = Standing
+			} else {
+				// Lock the creature against further actions, until it finishes its move
+				crtr.CanMove = false
+				crtr.State = Walking
+				fmt.Printf("Starting walk: %s walking from (%d,%d) to (%d,%d)\n", crtr.Name, pos.TileX, pos.TileY, newX, newY)
+				pos.TileX = newX
+				pos.TileY = newY
 			}
-			if pBox.Y == ClampFloat(pBox.Y, 0, float64(a.Height*TileHeight*18)) && vertOk {
-				pos.Y = newY
+		}
+
+		if crtr.State == Walking {
+			// Move in-progress: Nudge the thing toward its destination, according to its speed
+			// Higher speed => fewer ticks to complete a move
+			// Detect how far we've left in the move
+			distanceX := math.Abs(pos.X - float64(pos.TileX*TileWidth) - float64(TileWidth/2))
+			distanceY := math.Abs(pos.Y - float64(pos.TileY*TileHeight) - float64(TileHeight/2))
+
+			// If we've got less than one move left, finish the move
+			if distanceX <= moves.Speed && distanceY <= moves.Speed {
+				// TODO: Send "entered tile" event?
+				fmt.Printf("Finished walk: %s enters (%d, %d)\n", crtr.Name, pos.TileX, pos.TileY)
+				pos.X = float64(pos.TileX*TileWidth) + float64(TileWidth/2)
+				pos.Y = float64(pos.TileY*TileHeight) + float64(TileHeight/2)
+				crtr.CanMove = true
+			} else {
+				// If not, nudge the thing closer
+				pos.X += float64(moves.Direction.DeltaX) * moves.Speed
+				pos.Y += float64(moves.Direction.DeltaY) * moves.Speed
 			}
 		}
 	}

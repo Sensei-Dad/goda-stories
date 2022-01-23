@@ -166,12 +166,12 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Biome, zone.Width, zone.Height, zone.Type)
 
 	ret += "<div class=\"textbox\"><b>Tile Hotspots</b>\n\n"
-	if zone.TileHotspots == nil {
+	if zone.Hotspots == nil {
 		ret += "<p>None</p>\n</div>\n</div>\n\n"
 	} else {
 		ret += "<ul>\n"
-		for i := 0; i < len(zone.TileHotspots); i++ {
-			t := zone.TileHotspots[i]
+		for i := 0; i < len(zone.Hotspots); i++ {
+			t := zone.Hotspots[i]
 			ret += "  <li>" + t.ToString() + "</li>\n"
 		}
 		ret += "</ul>\n</div>\n</div>\n<br></br>\n\n"
@@ -224,7 +224,7 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 
 	ret += "<div class=\"mapcontainer\">\n"
 	ret += "<b>Terrain</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Terrain, zone.Width, zone.Height)
-	ret += "<b>Objects</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Objects, zone.Width, zone.Height)
+	ret += "<b>Walls</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Walls, zone.Width, zone.Height)
 	ret += "<b>Overlay</b>\n\n" + getHTMLTableFromMap(zone.TileMaps.Overlay, zone.Width, zone.Height) + "</div>\n"
 	ret += "\n</body>\n</html>"
 
@@ -288,7 +288,7 @@ func saveMapToPNG(mapPath string, zone gosoh.ZoneInfo) error {
 			log.Fatal(err)
 		}
 
-		objectsTile, err := getTileByNumber(zone.TileMaps.Objects[i])
+		objectsTile, err := getTileByNumber(zone.TileMaps.Walls[i])
 		if err != nil {
 			log.Fatal(err)
 		}

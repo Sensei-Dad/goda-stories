@@ -25,12 +25,12 @@ TODO:
 	- load the SubZone, stash the Entities
 	- when you exit, the ECS stashes / restores them
 	- for smaller maps, just shove some black around the edges until it's Viewport-sized
-	- one big Image each for Terrain / Objects / Overlay
+	- one big Image each for Terrain / Walls / Overlay
 	- Add functions / getters / Neighbors, so they act like Nodes
 	- save Objects/Triggers to ECS (LoadZoneObjects)
 	- basically EVERY pushblock, chest, NPC, alternate NPC, enemy, etc. will be counted and added to the Entity pool
 	- new "Processible" component will limit which Entities are tracked at any time
-	- rename Objects to Walls layer => Obj to ECS, everything else is a Wall
+	- in Walls layer => Objects to ECS, everything else is a Wall
 - Refactor Draw:
 	- instead of tile-by-tile, just draw a Subimage of each layer and use the Viewport to make a Rect
 - Refactor Actions:
@@ -182,48 +182,6 @@ func CheckIsWalkable(tNum int) bool {
 	return TileInfos[tNum].IsWalkable
 }
 
-// Check for which tile (or tiles) a CollisionBox may be overlapping
-// A box overlaps 4 tiles at most (as it's roughly the size of a tile)
-func (a *MapArea) CheckCorners(b CollisionBox) (tl, tr, bl, br bool) {
-	// Find the tile coordinates of each corner
-	tx1 := int(b.X / float64(TileWidth))
-	ty1 := int(b.Y / float64(TileHeight))
-
-	tx2 := int((b.X + b.Width) / float64(TileWidth))
-	ty2 := int((b.Y + b.Height) / float64(TileHeight))
-
-	// If all 4 corners are within the same tile, then it doesn't overlap any other tiles
-	if tx1 == tx2 && ty1 == ty2 {
-		tl, tr, bl, br = false, false, false, false
-		return
-	}
-
-	// Check the tile at each corner, including IsWalkable
-	// If the box overlaps the edges of the map, that "counts"
-	if tx1 != Clamp(tx1, 0, len(a.Tiles)) {
-		tl = true
-	} else {
-		tl = b.OverlapsTile(a.Tiles[tx1][ty1])
-	}
-	if tx2 != Clamp(tx2, 0, len(a.Tiles)) {
-		tr = true
-	} else {
-		tr = b.OverlapsTile(a.Tiles[tx2][ty1])
-	}
-	if ty1 != Clamp(ty1, 0, len(a.Tiles[0])) {
-		bl = true
-	} else {
-		bl = b.OverlapsTile(a.Tiles[tx1][ty2])
-	}
-	if ty2 != Clamp(ty2, 0, len(a.Tiles[0])) {
-		br = true
-	} else {
-		br = b.OverlapsTile(a.Tiles[tx2][ty2])
-	}
-
-	return
-}
-
 func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
 	zInfo := Zones[zoneId]
 	// Save a ref to which zone number this is, so we can grab ZoneInfo later
@@ -250,7 +208,7 @@ func (z *ZoneInfo) GetTileAt(x, y int) MapTile {
 	tIndex := (z.Width * y) + x
 	ret := MapTile{}
 	ret.TerrainTileId = z.TileMaps.Terrain[tIndex]
-	ret.WallTileId = z.TileMaps.Objects[tIndex]
+	ret.WallTileId = z.TileMaps.Walls[tIndex]
 	ret.OverlayTileId = z.TileMaps.Overlay[tIndex]
 	ret.IsWalkable = CheckIsWalkable(ret.WallTileId)
 	ret.Box = CollisionBox{

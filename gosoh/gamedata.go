@@ -67,7 +67,7 @@ type CreatureState string
 const (
 	Standing  CreatureState = "Standing"
 	Walking   CreatureState = "Walking"
-	InMotion  CreatureState = "InMotion"
+	Jumping   CreatureState = "Jumping"
 	Attacking CreatureState = "Attacking"
 	Dragging  CreatureState = "Dragging"
 )
@@ -112,10 +112,10 @@ type ZoneInfo struct {
 	IsOverworld bool
 	TileMaps    struct {
 		Terrain []int
-		Objects []int
+		Walls   []int
 		Overlay []int
 	}
-	TileHotspots   []TileHotspot
+	Hotspots       []ZoneHotspot
 	ActionTriggers []ActionTrigger
 	ZoneActors     []ZoneActor
 	RewardItems    []int // IZX2
@@ -261,7 +261,7 @@ type TileInfo struct {
 	IsWalkable bool
 }
 
-type TileHotspot struct {
+type ZoneHotspot struct {
 	Id   int
 	Type TriggerHotspotType
 	X    int
@@ -521,7 +521,7 @@ func (a *TriggerAction) ToString() string {
 	return ret
 }
 
-func (hs *TileHotspot) ToString() string {
+func (hs *ZoneHotspot) ToString() string {
 	ret := fmt.Sprintf("%02d (%d, %d) ", hs.Id, hs.X, hs.Y)
 	switch hs.Type {
 	case ZoneEntrance:

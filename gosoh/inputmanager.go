@@ -49,7 +49,7 @@ func ProcessInput() {
 		crtr := result.Components[creatureComp].(*Creature)
 		plyr := result.Components[playerComp].(*PlayerInput)
 
-		// Update, if we're able to move
+		// Update facing, if we're able to move
 		if crtr.CanMove {
 			if dir.IsDirection() {
 				crtr.Facing = dir
