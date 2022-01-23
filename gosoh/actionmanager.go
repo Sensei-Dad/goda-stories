@@ -5,7 +5,7 @@ import "fmt"
 // Action manager:
 // - move stuff around the map
 
-func ProcessMovement(a MapArea) {
+func ProcessMovement(a *MapArea) {
 	// Check all entities with a Movement comp
 	for _, result := range moveView.Get() {
 		moves := result.Components[movementComp].(*Movable)

@@ -303,34 +303,16 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	offset := (6 * z.Width * z.Height) + 22
 
 	// Parse entries for tile-based triggers
-	triggerTypes := []string{
-		"trigger_location",
-		"spawn_location",
-		"force_location",
-		"vehicle_to_secondary_map",
-		"vehicle_to_primary_map",
-		"object_gives_locator",
-		"item_related_trigger",
-		"puzzle_NPC",
-		"crate_with_weapon",
-		"map_entrance",
-		"map_exit",
-		"unused",
-		"lock",
-		"teleporter",
-		"xwing_from_dagobah",
-		"xwing_to_dagobah",
-		"UNKNOWN",
-	}
 
 	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
-		z.TileTriggers = make([]gosoh.TileTrigger, numTriggers)
+		z.TileHotspots = make([]gosoh.TileHotspot, numTriggers)
 		for k := 0; k < numTriggers; k++ {
-			z.TileTriggers[k].Type = triggerTypes[int(binary.LittleEndian.Uint16(zData[offset+2:]))]
-			z.TileTriggers[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
-			z.TileTriggers[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
-			z.TileTriggers[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
+			z.TileHotspots[k].Type = gosoh.TriggerHotspotType(int(binary.LittleEndian.Uint16(zData[offset+2:])))
+			z.TileHotspots[k].Id = k
+			z.TileHotspots[k].X = int(binary.LittleEndian.Uint16(zData[offset+6:]))
+			z.TileHotspots[k].Y = int(binary.LittleEndian.Uint16(zData[offset+8:]))
+			z.TileHotspots[k].Arg = int(binary.LittleEndian.Uint16(zData[offset+12:]))
 			offset += 12
 		}
 	}

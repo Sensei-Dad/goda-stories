@@ -7,7 +7,7 @@ import (
 // World holds all the various bits of the game that we generate
 type GameWorld struct {
 	Name        string
-	SubAreas    map[int]gosoh.MapArea
+	SubAreas    []*gosoh.MapArea
 	CurrentArea int
 }
 
@@ -23,17 +23,18 @@ func NewWorld() *GameWorld {
 	gw := GameWorld{
 		Name: "Goda Stories",
 	}
-	gw.SubAreas = make(map[int]gosoh.MapArea)
+	gw.SubAreas = make([]*gosoh.MapArea, 0)
 
 	// Make a new Overworld
 	// Place the player on Dagobah
 	world := gosoh.NewOverworld(10, 10)
-	gw.SubAreas[world.Id] = world
+	gw.SubAreas = append(gw.SubAreas, world)
+	gw.CurrentArea = world.Id
 	world.PrintMap()
 
 	return &gw
 }
 
-func (g *Game) GetCurrentArea() gosoh.MapArea {
-	return g.World.SubAreas[g.World.CurrentArea]
+func (gw *GameWorld) GetCurrentArea() *gosoh.MapArea {
+	return gw.SubAreas[gw.CurrentArea]
 }

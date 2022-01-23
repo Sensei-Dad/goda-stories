@@ -12,6 +12,7 @@ import (
 // Globals related to the UI
 const ElementBuffer int = 5
 const WindowWidth, WindowHeight int = 640, 360
+const ViewAspectRatio float64 = 1.2
 
 // If the order of characters in the first part of the image changes, this string needs to be updated
 const fontChars string = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"

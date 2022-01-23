@@ -2,6 +2,7 @@ package gosoh
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/bytearena/ecs"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -61,7 +62,6 @@ func (d *CardinalDirection) IsDiagonal() bool {
 	return d.DeltaX != 0 && d.DeltaY != 0
 }
 
-// Game data
 type CreatureState string
 
 const (
@@ -115,7 +115,7 @@ type ZoneInfo struct {
 		Objects []int
 		Overlay []int
 	}
-	TileTriggers   []TileTrigger
+	TileHotspots   []TileHotspot
 	ActionTriggers []ActionTrigger
 	ZoneActors     []ZoneActor
 	RewardItems    []int // IZX2
@@ -135,6 +135,7 @@ type ZoneActor struct {
 // Tile triggers
 type TriggerConditionType byte
 type TriggerActionType byte
+type TriggerHotspotType int
 
 const (
 	FirstEnter      TriggerConditionType = 0x00
@@ -216,6 +217,26 @@ const (
 	AddToHealth     TriggerActionType = 0x25
 )
 
+const (
+	TriggerSpot        TriggerHotspotType = 0
+	SpawnLocation      TriggerHotspotType = 1
+	ForceLocation      TriggerHotspotType = 2
+	VehicleToSubarea   TriggerHotspotType = 3
+	VehicleToOverworld TriggerHotspotType = 4
+	LocatorSpot        TriggerHotspotType = 5
+	ItemSpot           TriggerHotspotType = 6
+	QuestNPCSpot       TriggerHotspotType = 7
+	WeaponSpot         TriggerHotspotType = 8
+	ZoneEntrance       TriggerHotspotType = 9
+	ZoneExit           TriggerHotspotType = 10
+	UNUSED             TriggerHotspotType = 11
+	LockSpot           TriggerHotspotType = 12
+	TeleportSpot       TriggerHotspotType = 13
+	XWingFromDagobah   TriggerHotspotType = 14
+	XWingToDagobah     TriggerHotspotType = 15
+	UNKNOWNHOTSPOT     TriggerHotspotType = 16
+)
+
 type TriggerCondition struct {
 	Condition TriggerConditionType
 	Args      []int
@@ -240,8 +261,9 @@ type TileInfo struct {
 	IsWalkable bool
 }
 
-type TileTrigger struct {
-	Type string
+type TileHotspot struct {
+	Id   int
+	Type TriggerHotspotType
 	X    int
 	Y    int
 	Arg  int
@@ -496,5 +518,46 @@ func (a *TriggerAction) ToString() string {
 	case AddToHealth:
 		ret = fmt.Sprintf("Give the player %d health", a.Args[0])
 	}
+	return ret
+}
+
+func (hs *TileHotspot) ToString() string {
+	ret := fmt.Sprintf("%02d (%d, %d) ", hs.Id, hs.X, hs.Y)
+	switch hs.Type {
+	case ZoneEntrance:
+		ret += fmt.Sprintf("Entrance => Zone %03d", hs.Arg)
+	case ZoneExit:
+		ret += "Exit => previous Zone"
+	case VehicleToSubarea, VehicleToOverworld:
+		ret += fmt.Sprintf("Vehicle => Zone %03d", hs.Arg)
+	case XWingToDagobah, XWingFromDagobah:
+		ret += fmt.Sprintf("X-Wing => Zone %03d", hs.Arg)
+	case TriggerSpot:
+		ret += "Trigger Spot"
+	case SpawnLocation:
+		ret += "Spawn location"
+	case ForceLocation:
+		ret += "Force location"
+	case LocatorSpot:
+		ret += "Get a Locator"
+	case ItemSpot:
+		ret += fmt.Sprintf("Item spot: arg %d", hs.Arg)
+	case QuestNPCSpot:
+		ret += "Quest NPC"
+	case WeaponSpot:
+		ret += "Weapon spot"
+	case LockSpot:
+		ret += "Lock spot"
+	case TeleportSpot:
+		ret += fmt.Sprintf("Teleport spot: arg %d", hs.Arg)
+	case UNUSED:
+		ret += fmt.Sprintf("Unused... %d", hs.Arg)
+	case UNKNOWNHOTSPOT:
+		ret += fmt.Sprintf("Unknown... %d", hs.Arg)
+	default:
+		ret += fmt.Sprintf("Unhandled trigger type, arg %d", hs.Arg)
+		log.Fatal("UNHANDLED HOTSPOT TYPE")
+	}
+
 	return ret
 }

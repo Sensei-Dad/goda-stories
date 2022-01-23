@@ -22,7 +22,7 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 
 	// Viewport is 12:10 ratio
 	vHeight := float64(WindowHeight - (2 * ElementBuffer))
-	vWidth := math.Round(vHeight * 1.2)
+	vWidth := math.Round(vHeight * ViewAspectRatio)
 
 	g.View = ViewCoords{
 		X:      0.0,
@@ -49,14 +49,14 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 	return g
 }
 
-var currentArea gosoh.MapArea
+var currentArea *gosoh.MapArea
 
 func (g *Game) Update() error {
 	// g.tick++
 	gosoh.ProcessInput()
 	// TODO: Handle AI, randomly move critters around, etc.
 	// ProcessCreatures(g)
-	currentArea = g.GetCurrentArea()
+	currentArea = g.World.GetCurrentArea()
 	gosoh.ProcessMovement(currentArea)
 	g.CenterViewport(currentArea)
 	// if the player has moved, then check loading / unloading Entities
@@ -65,7 +65,6 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the map and entities
-	currentArea = g.GetCurrentArea()
 	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 	// TODO: draw a walk mask
 	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
@@ -88,7 +87,7 @@ func (g *Game) Layout(w, h int) (int, int) {
 	return WindowWidth, WindowHeight
 }
 
-func (g *Game) CenterViewport(a gosoh.MapArea) {
+func (g *Game) CenterViewport(a *gosoh.MapArea) {
 	pX, pY, _, _ := gosoh.GetPlayerCoords()
 
 	halfWidth := g.View.Width / 2

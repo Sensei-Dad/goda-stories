@@ -165,30 +165,14 @@ func getZoneHTML(zone gosoh.ZoneInfo) (ret string) {
 	ret += fmt.Sprintf("<div class=\"mapimg\"><img src=\"%s.png\" alt=\"%s\"><div class=\"mapgrid\"></div></div>\n", mapName, mapName)
 	ret += fmt.Sprintf("<p class=\"textbox\">Type: %s, %dx%d (%s)</p>\n\n", zone.Biome, zone.Width, zone.Height, zone.Type)
 
-	ret += "<div class=\"textbox\"><b>Tile Triggers</b>\n\n"
-	if zone.TileTriggers == nil {
+	ret += "<div class=\"textbox\"><b>Tile Hotspots</b>\n\n"
+	if zone.TileHotspots == nil {
 		ret += "<p>None</p>\n</div>\n</div>\n\n"
 	} else {
 		ret += "<ul>\n"
-		for i := 0; i < len(zone.TileTriggers); i++ {
-			t := zone.TileTriggers[i]
-			// Reminder: we can print info about the tile here, as well
-			switch t.Type {
-			case "map_entrance":
-				ret += "  <li>Map entrance" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
-			case "map_exit":
-				ret += "  <li>Map exit" + fmt.Sprintf(" (%d, %d)</li>\n", t.X, t.Y)
-			case "vehicle_to_secondary_map":
-				ret += "  <li>Vehicle" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
-			case "xwing_to_dagobah", "xwing_from_dagobah":
-				ret += "  <li>X-Wing" + fmt.Sprintf(" (%d, %d) => <a href=\"map_%03d.html\">Zone %03d</a></li>\n", t.X, t.Y, t.Arg, t.Arg)
-			default:
-				if t.Arg != 65535 {
-					ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d) arg %d</li>\n", t.X, t.Y, t.Arg)
-				} else {
-					ret += "  <li>" + t.Type + fmt.Sprintf(" (%d, %d)</li>\n", t.X, t.Y)
-				}
-			}
+		for i := 0; i < len(zone.TileHotspots); i++ {
+			t := zone.TileHotspots[i]
+			ret += "  <li>" + t.ToString() + "</li>\n"
 		}
 		ret += "</ul>\n</div>\n</div>\n<br></br>\n\n"
 	}

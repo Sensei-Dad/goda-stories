@@ -133,7 +133,7 @@ func LoadAllTiles(tiles []TileInfo) {
 }
 
 // Worldgen!
-func NewOverworld(w, h int) MapArea {
+func NewOverworld(w, h int) *MapArea {
 	// Make Dagobah
 	dago := NewMapArea(2, 2)
 
@@ -142,7 +142,7 @@ func NewOverworld(w, h int) MapArea {
 	dago.AddZoneToArea(DAGOBAH_TR, 1, 0)
 	dago.AddZoneToArea(DAGOBAH_BR, 1, 1)
 
-	return dago
+	return &dago
 }
 
 func NewMapArea(w, h int) MapArea {
