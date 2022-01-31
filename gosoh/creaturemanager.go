@@ -19,7 +19,7 @@ func AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
 			Facing: Down,
 		}).
 		AddComponent(renderableComp, &Renderable{
-			Image: Tiles[cInfo.Images[Down]], // ALL JAWAS, ALL THE TIME
+			Image: cInfo.Images[Down],
 		}).
 		AddComponent(positionComp, &Position{
 			X:     float64(x*TileWidth) + 0.5, // Spawn in the center of the tile

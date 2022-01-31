@@ -2,17 +2,14 @@ package gosoh
 
 import (
 	"fmt"
-	"log"
+	"image"
 
 	"github.com/bytearena/ecs"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 /**
 TODO:
-- Render the entire map layer as an Image, and store it to the MapArea?
-	- This results in an image that might be too large? Need a way to load => tile zones as-before
 - New struct: MapArea
 	- Dagobah - make Dagobah (z93-96) to test rendering / loading multiple Zones, Yoda's hut for entrances, etc.
 	Overworld - the big 10x10 map
@@ -20,7 +17,6 @@ TODO:
 	- LocatorImage bool - for subareas, all we need to do is point to the parent area's Locator map
 - New struct: LocatorMap (see above)
 - Refactor MapArea / Worldgen:
-	- generate multiple screens and tile them together into a single *image ahead of time
 	- SubZones for door entrances, etc
 	- load the SubZone, stash the Entities
 	- when you exit, the ECS stashes / restores them
@@ -40,7 +36,7 @@ TODO:
 	- Can also have push-blocks reset when de-spawned, instead of keeping their coords
 **/
 
-var BlankTile *ebiten.Image = ebiten.NewImage(32, 32)
+var BlankTile *ebiten.Image = ebiten.NewImage(TileWidth, TileHeight)
 
 func InitializeECS() {
 	// Initialize the world via the ECS
@@ -76,7 +72,7 @@ func InitializeECS() {
 			CreatureId: 0,
 		}).
 		AddComponent(renderableComp, &Renderable{
-			Image: Tiles[Creatures[0].Images[Down]], // TODO: test the walking animations
+			Image: Creatures[0].Images[Down], // TODO: test the walking animations
 		}).
 		AddComponent(movementComp, &Movable{
 			Speed:     playerSpeed,
@@ -116,22 +112,6 @@ func InitializeECS() {
 	collideView = ECSManager.CreateView(collidables)
 }
 
-func LoadAllTiles(tiles []TileInfo) {
-	// return one big-ass slice of all tile images in the game,
-	// because Go and I are lazy like that
-	Tiles = make([]*ebiten.Image, len(tiles))
-	TileInfos = tiles
-	for x := 0; x < len(tiles); x++ {
-		tFile := fmt.Sprintf("assets/tiles/tile_%04d.png", x)
-		tImage, _, err := ebitenutil.NewImageFromFile(tFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		Tiles[x] = tImage
-	}
-}
-
 // Worldgen!
 func NewOverworld(w, h int) *MapArea {
 	// Make Dagobah
@@ -166,9 +146,12 @@ func NewMapArea(w, h int) MapArea {
 	return ret
 }
 
+// Return the tile image at the given tile ID
 func GetTileImage(tNum int) *ebiten.Image {
 	if tNum != 65535 {
-		return Tiles[tNum]
+		tileX, tileY := GetTileCoords(tNum)
+		tRect := image.Rect(tileX, tileY, tileX+TileWidth, tileY+TileHeight)
+		return TilesetImage.SubImage(tRect).(*ebiten.Image)
 	} else {
 		// 65535 indicates a blank tile
 		return BlankTile
@@ -245,9 +228,9 @@ func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, v
 				op := &ebiten.DrawImageOptions{}
 				op.GeoM.Translate(a.Tiles[x][y].Box.X-viewX+viewOffset, a.Tiles[x][y].Box.Y-viewY+viewOffset)
 				// Draw the box, if it's collidable
-				if !a.Tiles[x][y].IsWalkable {
-					DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y, viewOffset)
-				}
+				// if !a.Tiles[x][y].IsWalkable {
+				// 	DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y, viewOffset)
+				// }
 				screen.DrawImage(tile, op)
 			}
 		}

@@ -4,26 +4,26 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/MasterShizzle/goda-stories/ebitileui"
+	"github.com/MasterShizzle/goda-stories/ebizetsu"
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
 	World *GameWorld
-	Gui   *ebitileui.BitmapInterface
+	Gui   *ebizetsu.BitmapInterface
 	View  ViewCoords
 	tick  int64
 }
 
-func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo, soundList []string) *Game {
+func NewGame(tileset *ebiten.Image, tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo, soundList []string) *Game {
 	// TODO: Distinguish between "init game" and "new game"
 	g := &Game{}
-	g.Gui = ebitileui.NewBitmapInterface("assets/font_16x20.png", 16, 20)
+	g.Gui = ebizetsu.NewBitmapInterface("assets/font_16x20.png", 16, 20)
 
 	// Viewport is 12:10 ratio
-	vHeight := float64(ebitileui.WindowHeight - (2 * ebitileui.ElementBuffer))
-	vWidth := math.Round(vHeight * ebitileui.ViewAspectRatio)
+	vHeight := float64(ebizetsu.WindowHeight - (2 * ebizetsu.ElementBuffer))
+	vWidth := math.Round(vHeight * ebizetsu.ViewAspectRatio)
 
 	g.View = ViewCoords{
 		X:      0.0,
@@ -32,13 +32,12 @@ func NewGame(tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []go
 		Height: vHeight,
 	}
 
-	gosoh.LoadAllTiles(tileInfo)
-
 	gosoh.Zones = zoneInfo
 	gosoh.Items = itemInfo
 	gosoh.Puzzles = puzzleInfo
 	gosoh.Creatures = creatureInfo
 	gosoh.Sounds = soundList
+	gosoh.TilesetImage = tileset
 
 	g.World = NewWorld()
 
@@ -66,26 +65,26 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw the Viewport
-	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
-	// TODO: Walls and Renderables need to be drawn at the same time
-	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
-	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ebitileui.ElementBuffer))
-	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebitileui.ElementBuffer))
+	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
+	// TODO: Walls and Renderables need to be interleaved and drawn at the same time
+	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
+	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
+	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
 
-	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0x00, G: 0xff, B: 0x00, A: 1})
+	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 1}, 10)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(10, 10)
 	screen.DrawImage(splash, op)
 
 	// Show player stuff
-	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
-	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebitileui.ElementBuffer))
+	// gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
+	// gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// 640x360 internal dimensions, by default
 	// 16:9 aspect ratio, with plenty of scaling
-	return ebitileui.WindowWidth, ebitileui.WindowHeight
+	return ebizetsu.WindowWidth, ebizetsu.WindowHeight
 }
 
 func (g *Game) CenterViewport(a *gosoh.MapArea) {

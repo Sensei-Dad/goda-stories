@@ -1,87 +1,47 @@
 # Go-da Stories
 
-Port of Yoda Stories to Go, based on [an article](https://www.gamedeveloper.com/programming/reverse-engineering-the-binary-data-format-for-star-wars-yoda-stories) about the datafile format
+Port of *Yoda Stories* to Go, based on [an article](https://www.gamedeveloper.com/programming/reverse-engineering-the-binary-data-format-for-star-wars-yoda-stories) about the datafile format.
 
 To get started, simply copy the YODESK.DTA file from your Yoda Stories installation into `data/`.
 
+## Goals
 
-## Section notes
+### Written in Go
+First and foremost, this whole thing started as an excuse to learn Go. I also appreciate the purity that comes from using ONLY Go, despite how comfortable something might be to do with Python or Java or JS or any of the other languages that I already know. If I make a spaghetti monster of code, this time I'll do it in ONE language.
 
-### TILE
-On run, will output tile data and export pngs to `assets/tiles`.
+I shopped around for engines that would help with the "gamier" aspects of it, while still not doing everything for me. The design choices in [Ebiten](https://ebiten.org/) caught my eye: if "A dead simple 2D game library" isn't a perfect fit for something like *Yoda Stories*, I dunno what is. I could learn the language without learning an entire other game system with its *own* language on top of it. Having to wrap my poor little Object-oriented head around pointers and structs was bad enough. Ebiten hands me a game loop, throws in a graphics processor to draw stuff, and then gets out of my way. I love it.
 
-> TODO: Create the tiles dir if it doesn't exist
+Copying a [Roguelike tutorial](https://www.fatoldyeti.com/categories/roguelike-tutorial/) in Go to get started, I'm using [ByteArena's ECS library](https://github.com/bytearena/ecs) to hold the data, search through it, etc. A minute or two of searching through the Yoda Stories data file later, I'm convinced this is still the way to go.
 
-#### Demystifying the Tile flag bits
-Based on Zach's incredible work, I could make some easy eliminations right off the bat when designing the `TileInfo` struct:
+### Not the Original, but Close Enough
+To prevent myself going nuts and trying to code an entire cross-platform multiplayer nightmare that I'd never finish, I set some limitations before starting:
 
-* Without any real work, it was easy to verify that bits 9-15 are unused (*i.e.* the same value for all tiles), so we get to ignore those "for free".
-* He refers to the first group as "Type" bits. I checked and permuted through the first nine bits of all the tiles, finding only 10 unique types (Huzzahs for all!). Checking examples of each (and once again cheating off of Zach's answers), we can make some assumptions and try to categorize all 2123 tiles in the game:
-  * `010000000` - (441 tiles) Terrain, walkable. Drawn on the bottom layer, can be walked-upon by the player / mobs.
-  * `101000000` - (416 tiles) Terrain, non-walkable. Closed doors, chests, furniture, etc. Most all of these tiles have transparent bits when I checked samples, so it's safe to assume this means they should be drawn on the middle layer. Uses none of the later bits.
-  * `001000000` - (472 tiles) Terrain, non-walkable. Unlike the above non-walkable category, none of these tiles have transparent pixels to them, so we can assume they're also usually drawn on the *bottom* layer... though if the player can't walk over them, it doesn't make much difference.
-  * `101100000` - (18 tiles) Pushable object, pretty easily verified since there are so few examples. These are the things you can move around by holding Shift.
-  * `100010000` - (333 tiles) Terrain, walkable. Drawn on the top layer, after the player and other objects (arches, the top bits of tall buildings the player can walk behind, etc.).
-  * `000010000` - (5 tiles) Terrain, only these 5 appear to be "full" bottom-layer tiles for some reason. These look like water / jungle tiles, mostly, so possibly these five show the player half-submerged or something...?
-    * TODO: Once we figure out the scripting, look up the maps where these 5 tiles are actually used
-  * `100000001` - (246 tiles) These are the various characters, monsters, etc. in the game (we'll say Creatures, to borrow some D&D terminology).
-  * `100000010` - (167 tiles) Game objects that can be picked up, and get shown in the inventory (alongside weapons)
-  * `100000100` - (10 tiles) Weapon object, or The Force. Stuff that Luke can equip in his "weapon" slot and use with the left mouse button.
-  * `000001000` - (15 tiles) These are used for the Locator mini-map, but oddly it doesn't include ALL the tiles for the minimap. Luckily we can find the odd ones grouped together in-between the ones with this bitmask (starting at tile 817), so it shouldn't be too difficult to program around.
+* **Limited to Go.** This includes making calls to the original game's functions: we don't want to make a fancy interface for the existing game, we want to create a new one that uses the old game's assets.
+* **This is a programming project, not an art project.** On the other hand, I'm allowed to use only the media assets extracted from the original game's data file. This applies to most everything in-game, because let's be fair: once that door opens I'll just be spending my time in GIMP mocking up Lightsaber "swooshes" from *Super Star Wars* everywhere instead of learning Go, because that pixel art is still fantastic. Let's keep it limited strictly to *Yoda Stories* assets...
+    * ...with the exception of the user interface. Anything not using the other things must be cobbled together "by hand" with Ebiten graphical tools and my old Dwarf Fortress 16x20 tileset, which I'll use to build the UI / show dialogue and other stuff in-game. Unless I finish the base game and want to implement something like modding characters in, I'll limit my graphical additions to this tileset only.
+    * ...but we can, however, take advantage of Ebiten to tweak / flip / skew / modify our existing tiles to get more out of them, e.g. skew the graphics for Luke's saber to be a wider slash, or implement crazier *even more modern* features that modern computers *might just* be able to pull off, like showing more than 9 tiles on a side.
+* **Write the game engine, not the game**: Use the original maps, scripting, and game logic wherever **feasible**:
+    * Maps, Tiles
+    * Items, Weapons, and enemies
+    * Mission text: All the original Endings and scripts
+    * Sounds & Music
 
-...and there we go. Scrunch a couple of these together (weapons and items are both "show on map => pick up" kinds of tiles, etc.), we can start verifying what the last groups of bits are used for.
+Long story short: this doesn't need to be 100% frame-perfect-accurate. I don't want to write a mountain of code to fill in a tiny hole in the game logic. If I can't figure out what something does, it's okay to use the best guess at the time and move on, especially if it's considerably less work.
 
-#### Final tile sort
-From the above, we can start deciding on tile categories that could be useful for programming, and decipher all the remaining bits:
-* Terrain Tiles, always drawn on the bottom
-  * 142 of these use bit 16. Zach refers to it as a "door" bit in terms of terrain, but on inspection this flag also includes tiles that depict switches, staircases, plain squares of terrain, etc... Since all these are walkable, I'm thinking that this bit indicates any tile that triggers `<some generic event>` when stepped-upon, and door functionality (*i.e.* a "move the player elsewhere" event) happens to be included in those functions: A handy thing to keep in mind while we're looking at the action scripts.
-* Object Tiles, always drawn on the middle layer
-* Block Tiles, which can be pushed / pulled
-* Overlay Tiles, drawn on top of the rest
-  * It's worth noting (*i.e.* it saves me some work) that none of the Object, Block, or Overlay tiles use any of the other bits.
-* Creature Tiles, which move around and do stuff.
-* Item Tiles, including keycards, key items, and weapons. We're doing this inside an ECS, so we can just make components corresponding to Weapons, Keycards, ConsumableItemsThatHealThePlayer, etc.
-* Minimap Tiles, notable for being the only ones which are tiled on a different "grid" than the others: the game worlds / Locator maps are 10 tiles across with a border, when the UI usually displays 9 tiles per axis.
+### But not THAT Close
+When writing down all the things that I still *wanted* to adjust or change about the game, I realized that most of what I didn't like about the original game (along with *Indy's Desktop Adventures*) was because of its Windows-3.1-native interface. And since native UI in Go at the time of this writing isn't universally "a thing", I'm sticking to using Ebiten to handle interpreting all the user input while giving the game a bit of a face-lift. Other gripes and notes on the interface design are in [their own file](docs/Interface.md).
 
-One nice thing is that (for now) we don't *really* need to worry overmuch about which order things get drawn in, since the layer(s) for each tile are also embedded in the ZONE data. Perhaps this will change if we start wanting to create our own maps.
+## Misc. Notes
+Things I've recorded about my exploration of the game's data and my attempts to make an engine for it are all in the `docs/` folder:
 
-### ZONE
+* [docs/Extraction.md] - Notes about the Yoda Stories datafile format
+* [docs/Interface.md] - Things related to the UI
 
-Section layout:
-| index 		| len 			| desc |
-|---------------|---------------|------|
-| 0:2   		| 2 B 			| ID |
-| 2:6 			| 4 B			| "IZON" |
-| 6:10			| 4 B			| (unknown) |
-| 10:12			| 2 B			| map width (W) |
-| 12:14			| 2 B			| map height (H) |
-| 14			| 1 B			| map flags (TODO) |
-| 15:20			| 5 B			| unused (same values for every map) |
-| 20			| 1 B			| planet type (desert / snow / forest / swamp) |
-| 21			| 1 B 			| unused (same values for every map) |
-| 22:X			| (W * H) * 6 B	| map data: Each "cell" in the map has 3 tiles, each denoted by a Uint16; tile values correspond to the tile number |
-| ??			| 2 B			| object info entry count (X) |
-| ?? 			| (X * 12) B	| object triggers |
+## References
+Here's a list of those who have pulled this off before me, or whose efforts got me pointed along the path that worked. A large part of what I've done is because these people laid such complete foundations for me to stand on:
 
-TODO
-```
-		4 B: "IZAX"
-		2 B: length (X)
-		(X - 6) B: IZAX data
-		4 B: "IZX2"
-		2 B: length (X)
-		(X - 6) B: IZX2data
-		4 B: "IZX3"
-		2 B: length (X)
-		(X - 6) B: IZX3 data
-		4 B: "IZX4"
-		8 B: IZX4 data
-		4 B: "IACT"
-		4 B: length (X)
-		X B: action data
-		...
-		4 B: "IACT"
-		4 B: length (X)
-		X B: action data
-```
-
+* Of course, [the original game](https://en.wikipedia.org/wiki/Star_Wars:_Yoda_Stories) deserves a nod of respect. It's a gem. This and *Indy's Desktop Adventures* have enough about them to fit nicely into the "rogue-lite" genre, before it was even a thing.
+* [The original article](https://www.gamedeveloper.com/programming/reverse-engineering-the-binary-data-format-for-star-wars-yoda-stories) about extracting the datafile format, by Zach Barth. (Not to mention the joys that he's brought with Infinifactory and SpaceChem, and all the other things inspired by his work.) I started this whole mess by trying to duplicate his code to view the tiles and make maps out of them, while learning to code in Go.
+* After Go itself, [Ebiten](https://ebiten.org/) is the tool that makes everything else work. Hajime Hoshi has put together a wonderful bit of code. I spent some time shopping between Godot and Ebiten... and I'm glad I went with it. If Godot is a kitchen appliance that has a million-and-one functions, it has that many more things to look up in the manual; Ebiten is the plain 10-inch chef's knife that looks unassuming but does its job flawlessly, and ends up being the most useful thing in your kitchen.
+* [DesktopAdventures](https://github.com/shinyquagsire23/DesktopAdventures/blob/master/scrdoc.txt) by shinyquagsire23 is a re-implementation that was key in helping me decode what the IACT sections were doing.
+* [WebFun](https://github.com/cyco/WebFun) by Cyco is another fantastic re-implementation of the original game engine, and the code there filled in all the gaps in my knowledge of the datafile that the above one didn't.

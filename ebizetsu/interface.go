@@ -1,4 +1,4 @@
-package ebitileui
+package ebizetsu
 
 import (
 	"image"
@@ -52,8 +52,9 @@ func NewBitmapInterface(fontImagePath string, tileW, tileH int) *BitmapInterface
 }
 
 // TODO: Implement a target font size
-func (ui *BitmapInterface) GetText(s string, clr color.RGBA) *ebiten.Image {
+func (ui *BitmapInterface) GetText(s string, clr color.RGBA, lineHeight int) *ebiten.Image {
 	ret := ebiten.NewImage(ui.TileWidth*len(s), ui.TileHeight)
+	fontScale := float64(lineHeight / ui.TileHeight)
 
 	for i, char := range s {
 		charNum := ui.Charmap[char]
@@ -63,7 +64,8 @@ func (ui *BitmapInterface) GetText(s string, clr color.RGBA) *ebiten.Image {
 		g := float64(clr.G) / 0xff
 		b := float64(clr.B) / 0xff
 		op.ColorM.Scale(r, g, b, 1)
-		op.GeoM.Translate(float64(i*ui.TileWidth), 0)
+		op.GeoM.Translate(float64(i*ui.TileWidth)*fontScale, 0)
+		op.GeoM.Scale(fontScale, fontScale)
 
 		srcX := (charNum % ui.FontImageWidth) * ui.TileWidth
 		srcY := (charNum / ui.FontImageWidth) * ui.TileHeight

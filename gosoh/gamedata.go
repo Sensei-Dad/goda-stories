@@ -13,6 +13,9 @@ import (
 var playerSpeed float64 = 2.0
 
 const TileWidth, TileHeight int = 32, 32
+const TilesetColumns int = 20
+
+var TilesetImage *ebiten.Image
 
 var ECSManager *ecs.Manager
 var ECSTags map[string]ecs.Tag
@@ -78,7 +81,7 @@ type CardinalDirection struct {
 	DeltaY int
 }
 
-// A contiguous area to be displayed (Dagobah is 4 screens, the Overworld is 10x10, etc...)
+// A contiguous area to be displayed, i.e. a collection of Zones
 type MapArea struct {
 	Id     int
 	Width  int
@@ -125,6 +128,7 @@ type ZoneInfo struct {
 }
 
 type ZoneActor struct {
+	Index      int
 	CreatureId int
 	ZoneX      int
 	ZoneY      int
@@ -560,4 +564,10 @@ func (hs *ZoneHotspot) ToString() string {
 	}
 
 	return ret
+}
+
+func GetTileCoords(tNum int) (tileX, tileY int) {
+	tileX = (tNum % TilesetColumns) * TileWidth
+	tileY = (tNum / TilesetColumns) * TileHeight
+	return
 }

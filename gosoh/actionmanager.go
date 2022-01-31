@@ -1,7 +1,6 @@
 package gosoh
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -33,14 +32,12 @@ func ProcessMovement(a *MapArea) {
 			}
 			if !tileIsOpen {
 				// TODO: Send "Bump" event
-				fmt.Printf("Tile (%d, %d) is blocked", newX, newY)
 				crtr.CanMove = true
 				crtr.State = Standing
 			} else {
 				// Lock the creature against further actions, until it finishes its move
 				crtr.CanMove = false
 				crtr.State = Walking
-				fmt.Printf("Starting walk: %s walking from (%d,%d) to (%d,%d)\n", crtr.Name, pos.TileX, pos.TileY, newX, newY)
 				pos.TileX = newX
 				pos.TileY = newY
 			}
@@ -53,10 +50,9 @@ func ProcessMovement(a *MapArea) {
 			distanceX := math.Abs(pos.X - float64(pos.TileX*TileWidth) - float64(TileWidth/2))
 			distanceY := math.Abs(pos.Y - float64(pos.TileY*TileHeight) - float64(TileHeight/2))
 
-			// If we've got less than one move left, finish the move
+			// If we've got less than one nudge left, finish the move
 			if distanceX <= moves.Speed && distanceY <= moves.Speed {
 				// TODO: Send "entered tile" event?
-				fmt.Printf("Finished walk: %s enters (%d, %d)\n", crtr.Name, pos.TileX, pos.TileY)
 				pos.X = float64(pos.TileX*TileWidth) + float64(TileWidth/2)
 				pos.Y = float64(pos.TileY*TileHeight) + float64(TileHeight/2)
 				crtr.CanMove = true

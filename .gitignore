@@ -1,21 +1,23 @@
-assets/tiles/*.png
+assets/tiles/*
 assets/maps/*.png
 assets/maps/*.html
 assets/text/*.txt
 assets/text/*.html
 assets/test
 assets/test/*
+assets/*.tsx
+assets/yodatiles.png
 
 data/YODESK.DTA
-data/IPUZ*
-data/SNDS*
-data/TNAM*
-data/PUZ2*
-data/CHAR*
-data/ICHA*
-data/IZON*
-data/ZONE*
-data/STUP*
+docs/IPUZ*
+docs/SNDS*
+docs/TNAM*
+docs/PUZ2*
+docs/CHAR*
+docs/ICHA*
+docs/IZON*
+docs/ZONE*
+docs/STUP*
 
 goda-stories
 out.txt

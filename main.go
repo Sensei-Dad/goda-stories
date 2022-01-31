@@ -15,6 +15,7 @@ func main() {
 	//  - some more tweaking to not repeat this step too many times
 	//  - action scripts
 	//  - worldgen rules?
+	var tileset *ebiten.Image
 	var tileInfo []gosoh.TileInfo
 	var zoneInfo []gosoh.ZoneInfo
 	var itemInfo []gosoh.ItemInfo
@@ -22,31 +23,14 @@ func main() {
 	var creatureInfo []gosoh.CreatureInfo
 	var soundList []string
 
-	tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList = processYodaFile(yodaFile)
+	tileset, tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList = processYodaFile(yodaFile)
 
 	// Init the game...
-	g := NewGame(tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList)
+	g := NewGame(tileset, tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList)
 
 	// create various output files
 	if true {
-		err := dumpToFile(tileInfoFile, tileInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(itemInfoFile, itemInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(puzzleInfoFile, puzzleInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = dumpToFile(crtrInfoText, creatureInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		saveHTMLMaps(g)
+		saveTiledMaps(g)
 	}
 
 	ebiten.SetWindowResizable(true)

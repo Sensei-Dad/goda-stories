@@ -12,11 +12,11 @@ func ProcessRenderables(screen *ebiten.Image, vpX, vpY, vpOffset float64) {
 		pos := result.Components[positionComp].(*Position)
 		cInfo := Creatures[crtr.CreatureId]
 
-		img.Image = Tiles[cInfo.Images[crtr.Facing]]
+		img.Image = cInfo.Images[crtr.Facing]
 
 		op := &ebiten.DrawImageOptions{}
 		// Position, in an Entity's case, indicates the center of their bounding box
 		op.GeoM.Translate(pos.X-(float64(TileWidth)/2)-vpX+vpOffset, pos.Y-(float64(TileHeight)/2)-vpY+vpOffset)
-		screen.DrawImage(img.Image, op)
+		screen.DrawImage(GetTileImage(img.Image), op)
 	}
 }

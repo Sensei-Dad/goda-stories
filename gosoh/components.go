@@ -2,7 +2,6 @@ package gosoh
 
 import (
 	"github.com/bytearena/ecs"
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Global components
@@ -45,7 +44,7 @@ type Position struct {
 }
 
 type Renderable struct {
-	Image *ebiten.Image
+	Image int // Tile ID
 }
 
 type PlayerAnimation struct {
