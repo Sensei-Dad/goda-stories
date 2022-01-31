@@ -1,5 +1,6 @@
 assets/tiles/*
 assets/maps/*.png
+assets/maps/*.tmx
 assets/maps/*.html
 assets/text/*.txt
 assets/text/*.html

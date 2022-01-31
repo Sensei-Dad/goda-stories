@@ -19,8 +19,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-const tilesetImagePath string = "assets/yodatiles.png"
-
 // Palette data extracted from the de-compiled Yoda Stories binary
 var PaletteData = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -265,7 +263,7 @@ func processTileData(tileId int, flags uint32) gosoh.TileInfo {
 		t.Type = "Object"
 		t.IsWalkable = false
 	case "001000000":
-		t.Type = "Terrain"
+		t.Type = "Wall"
 		t.IsWalkable = false
 	case "101100000":
 		t.Type = "Block"
@@ -703,7 +701,7 @@ func processSoundList(sData []byte) (ret []string) {
 	offset := 2
 	for offset < len(sData) {
 		strLen := int(binary.LittleEndian.Uint16(sData[offset:]))
-		ret = append(ret, string(sData[offset+2:offset+strLen+2]))
+		ret = append(ret, string(sData[offset+2:offset+strLen+1]))
 		offset = offset + strLen + 2
 	}
 

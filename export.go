@@ -11,7 +11,8 @@ import (
 	"github.com/salviati/go-tmx/tmx"
 )
 
-const tilesetFileName = "assets/yodatiles.tsx"
+const tilesetFileName string = "assets/yodatiles.tsx"
+const tilesetImagePath string = "assets/yodatiles.png"
 
 func dumpToFile(filepath string, foo ...interface{}) error {
 	// Create the output file

@@ -19,7 +19,6 @@ var TilesetImage *ebiten.Image
 
 var ECSManager *ecs.Manager
 var ECSTags map[string]ecs.Tag
-var Tiles []*ebiten.Image
 var TileInfos []TileInfo
 var Zones []ZoneInfo
 var Creatures []CreatureInfo
@@ -564,10 +563,4 @@ func (hs *ZoneHotspot) ToString() string {
 	}
 
 	return ret
-}
-
-func GetTileCoords(tNum int) (tileX, tileY int) {
-	tileX = (tNum % TilesetColumns) * TileWidth
-	tileY = (tNum / TilesetColumns) * TileHeight
-	return
 }

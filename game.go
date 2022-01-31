@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image/color"
 	"math"
 
 	"github.com/MasterShizzle/goda-stories/ebizetsu"
@@ -38,6 +37,7 @@ func NewGame(tileset *ebiten.Image, tileInfo []gosoh.TileInfo, zoneInfo []gosoh.
 	gosoh.Creatures = creatureInfo
 	gosoh.Sounds = soundList
 	gosoh.TilesetImage = tileset
+	gosoh.TileInfos = tileInfo
 
 	g.World = NewWorld()
 
@@ -71,14 +71,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
 	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
 
-	splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 1}, 10)
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(10, 10)
-	screen.DrawImage(splash, op)
+	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 1}, 10)
+	// op := &ebiten.DrawImageOptions{}
+	// op.GeoM.Translate(10, 10)
+	// screen.DrawImage(splash, op)
 
 	// Show player stuff
-	// gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
-	// gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
+	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
+	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
 }
 
 func (g *Game) Layout(w, h int) (int, int) {

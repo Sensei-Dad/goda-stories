@@ -158,8 +158,15 @@ func GetTileImage(tNum int) *ebiten.Image {
 	}
 }
 
+// Return the location of the given tile on the tileset image, in pixels
+func GetTileCoords(tNum int) (tileX, tileY int) {
+	tileX = (tNum % TilesetColumns) * TileWidth
+	tileY = (tNum / TilesetColumns) * TileHeight
+	return
+}
+
 func CheckIsWalkable(tNum int) bool {
-	if tNum >= len(Tiles) || tNum < 0 {
+	if tNum >= len(TileInfos) || tNum < 0 {
 		return true
 	}
 	return TileInfos[tNum].IsWalkable
@@ -171,7 +178,7 @@ func (a *MapArea) AddZoneToArea(zoneId, x, y int) {
 	// Also used to determine when enemies get loaded / unloaded
 	a.Zones[x][y] = &zInfo
 
-	// Copy the zone tile IDs onto this area's tiles, and set the collision box position
+	// Copy the zone tile info onto this area's tiles, and set the collision box position
 	for j := 0; j < zInfo.Height; j++ {
 		for i := 0; i < zInfo.Width; i++ {
 			t := zInfo.GetTileAt(i, j)
@@ -228,9 +235,9 @@ func (a *MapArea) DrawLayer(lyr LayerName, screen *ebiten.Image, viewX, viewY, v
 				op := &ebiten.DrawImageOptions{}
 				op.GeoM.Translate(a.Tiles[x][y].Box.X-viewX+viewOffset, a.Tiles[x][y].Box.Y-viewY+viewOffset)
 				// Draw the box, if it's collidable
-				// if !a.Tiles[x][y].IsWalkable {
-				// 	DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y, viewOffset)
-				// }
+				if !a.Tiles[x][y].IsWalkable {
+					DrawTileBox(screen, a.Tiles[x][y].Box, viewBox.X, viewBox.Y, viewOffset)
+				}
 				screen.DrawImage(tile, op)
 			}
 		}
