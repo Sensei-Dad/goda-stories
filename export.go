@@ -45,9 +45,9 @@ type TiledXMLMap struct {
 	BackgroundColor string                `xml:"backgroundcolor,attr"`
 	NextLayerId     int                   `xml:"nextlayerid,attr"`
 	NextObjectId    int                   `xml:"nextobjectid,attr"`
+	Tileset         TiledTilesetRef       `xml:"tileset"`
 	Properties      []TiledXMLProperty    `xml:"properties>property"`
 	Objects         []TiledXMLObjectGroup `xml:"objectgroup"`
-	Tileset         TiledTilesetRef       `xml:"tileset"`
 	Layers          []TiledXMLMapLayer    `xml:"layer"`
 }
 
@@ -130,6 +130,7 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 		NextLayerId:     1,
 		NextObjectId:    1,
 	}
+
 	zoneXML.Tileset = TiledTilesetRef{
 		XMLName:  xml.Name{Local: "tileset"},
 		FirstGid: 1,
@@ -189,13 +190,30 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			Id:       totalObjs,
 			Name:     hs.ToString(),
 			Type:     int(hs.Type),
-			X:        (hs.X * gosoh.TileWidth),
-			Y:        (hs.Y * gosoh.TileHeight),
-			Width:    gosoh.TileWidth - 2,
-			Height:   gosoh.TileHeight - 2,
+			X:        (hs.X * gosoh.TileWidth) + 2,
+			Y:        (hs.Y * gosoh.TileHeight) + 2,
+			Width:    gosoh.TileWidth - 4,
+			Height:   gosoh.TileHeight - 4,
 			Rotation: 0,
 		}
 		hotspots.Objects = append(hotspots.Objects, spot)
+	}
+	for _, act := range zData.ZoneActors {
+		totalObjs++
+		crtr := gosoh.Creatures[act.CreatureId]
+		actor := TiledXMLObject{
+			XMLName:  xml.Name{Local: "object"},
+			Id:       totalObjs,
+			Name:     crtr.Name,
+			Type:     act.CreatureId,
+			X:        (act.ZoneX * gosoh.TileWidth),
+			Y:        (act.ZoneY * gosoh.TileHeight),
+			Width:    gosoh.TileWidth,
+			Height:   gosoh.TileHeight,
+			Rotation: 0,
+			TileGid:  gosoh.Creatures[act.CreatureId].Images[gosoh.Down] + 1,
+		}
+		actors.Objects = append(actors.Objects, actor)
 	}
 
 	zoneXML.Objects = append(zoneXML.Objects, hotspots)
@@ -204,7 +222,6 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 	zoneXML.Objects = append(zoneXML.Objects, triggers)
 
 	// TODO:
-	// - Actors
 	// - Action Triggers
 	// - Quest NPCs
 
