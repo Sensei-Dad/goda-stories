@@ -36,6 +36,28 @@ var UpRight CardinalDirection = CardinalDirection{Name: "UpRight", DeltaX: 1, De
 var DownRight CardinalDirection = CardinalDirection{Name: "DownRight", DeltaX: 1, DeltaY: 1}
 var NoMove CardinalDirection = CardinalDirection{Name: "None", DeltaX: 0, DeltaY: 0}
 
+var ClockwiseFrom = map[string]CardinalDirection{
+	"Up":        UpRight,
+	"UpRight":   Right,
+	"Right":     DownRight,
+	"DownRight": Down,
+	"Down":      DownLeft,
+	"DownLeft":  Left,
+	"Left":      UpLeft,
+	"UpLeft":    Up,
+}
+
+var WiddershinsFrom = map[string]CardinalDirection{
+	"Up":        UpLeft,
+	"UpRight":   Up,
+	"Right":     UpRight,
+	"DownRight": Right,
+	"Down":      DownRight,
+	"DownLeft":  Down,
+	"Left":      DownLeft,
+	"UpLeft":    Left,
+}
+
 // Special zone IDs to pay attention to
 const (
 	START_FACE int = 0
@@ -362,81 +384,80 @@ func (t *TriggerCondition) ToString() string {
 	ret := ""
 	switch t.Condition {
 	case FirstEnter:
-		ret = "the Player enters this Zone for the first time"
+		ret = "FirstEnter"
 	case Enter:
-		ret = "the Player enters this Zone"
+		ret = "ZoneEnter"
 	case BumpTile:
-		ret = fmt.Sprintf("the Player interacts with tile_%04d at (%d, %d)", t.Args[2], t.Args[0], t.Args[1])
+		ret = "BumpTile"
 	case UseItem:
-		ret = fmt.Sprintf("the Player uses item_%03d on tile_%04d at (%d, %d, %d)", t.Args[4], t.Args[3], t.Args[0], t.Args[1], t.Args[2])
+		ret = "UseItem"
 	case Walk:
-		ret = fmt.Sprintf("the Player walks onto tile (%d, %d)", t.Args[0], t.Args[1])
+		ret = "TileWalk"
 	case TempVarEq:
-		ret = fmt.Sprintf("TempVar is equal to %d", t.Args[0])
+		ret = "TVar_EQ"
 	case RandVarEq:
-		ret = fmt.Sprintf("RandVar is equal to %d", t.Args[0])
+		ret = "RVar_EQ"
 	case RandVarGt:
-		ret = fmt.Sprintf("RandVar is greater than %d", t.Args[0])
+		ret = "RVar_GT"
 	case RandVarLt:
-		ret = fmt.Sprintf("RandVar is less than %d", t.Args[0])
+		ret = "RVar_LT"
 	case EnterVehicle:
-		ret = "the Player enters a vehicle"
+		ret = "EnterVehicle"
 	case CheckTile:
-		tnam := fmt.Sprintf("tile_%04d", t.Args[0])
-		if t.Args[0] == 65535 {
-			tnam = "empty"
-		}
-		ret = fmt.Sprintf("the tile at (%d, %d, %d) is %s", t.Args[1], t.Args[2], t.Args[3], tnam)
+		ret = "CheckTile"
 	case EnemyDead:
-		ret = fmt.Sprintf("the enemy #%02d is dead", t.Args[0])
+		ret = "CrtrDead"
 	case AllEnemiesDead:
-		ret = "all enemies are dead"
+		ret = "AllDead"
 	case HasItem:
-		ret = fmt.Sprintf("the Player has item_%03d", t.Args[0])
+		ret = "HasItem"
 	case CheckQuestItem1:
-		ret = fmt.Sprintf("the first Quest item is item_%03d", t.Args[0])
+		ret = "Item1Is"
 	case CheckQuestItem2:
-		ret = fmt.Sprintf("the second Quest item is item_%03d", t.Args[0])
+		ret = "Item2Is"
 	case Unknown10:
-		ret = "Unknown (10)..."
+		ret = "Unkwn10"
 	case GameInProgress:
-		ret = "the Player has not finished the game"
+		ret = "MainQuestOpen"
 	case GameCompleted:
-		ret = "the Player has finished the game"
+		ret = "MainQuestDone"
 	case HealthLt:
-		ret = fmt.Sprintf("the Player has less than %d health", t.Args[0])
+		ret = "Life_LT"
 	case HealthGt:
-		ret = fmt.Sprintf("the Player has more than %d health", t.Args[0])
+		ret = "Life_GT"
 	case Unknown15:
-		ret = "Unknown (15)..."
+		ret = "Unkwn15"
 	case Unknown16:
-		ret = "Unknown (16)..."
+		ret = "Unkwn16"
 	case UseWrongItem:
-		ret = fmt.Sprintf("the Player uses the wrong item on tile_%04d at (%d, %d, %d)", t.Args[3], t.Args[0], t.Args[1], t.Args[2])
+		ret = "WrongItem"
 	case PlayerAtPos:
-		ret = fmt.Sprintf("the Player is at zone coords (%d, %d)", t.Args[0], t.Args[1])
+		ret = "PlyrAtPos"
 	case GlobalVarEq:
-		ret = fmt.Sprintf("GlobalVar is equal to %d", t.Args[0])
+		ret = "GVar_EQ"
 	case GlobalVarLt:
-		ret = fmt.Sprintf("GlobalVar is less than %d", t.Args[0])
+		ret = "GVar_LT"
 	case GlobalVarGt:
-		ret = fmt.Sprintf("GlobalVar is greater than %d", t.Args[0])
+		ret = "GVar_GT"
 	case ExperienceEq:
-		ret = fmt.Sprintf("the Player's XP is equal to %d", t.Args[0])
+		ret = "Wins_EQ"
 	case Unknown1D:
-		ret = "Unknown (1D)..."
+		ret = "Unkwn1d"
 	case Unknown1E:
-		ret = "Unknown (1E)..."
+		ret = "Unkwn1e"
 	case TempVarNe:
-		ret = fmt.Sprintf("TempVar is not equal to %d", t.Args[0])
+		ret = "TVar_NE"
 	case RandVarNe:
-		ret = fmt.Sprintf("RandVar is not equal to %d", t.Args[0])
+		ret = "RVar_NE"
 	case GlobalVarNe:
-		ret = fmt.Sprintf("GlobalVar is not equal to %d", t.Args[0])
+		ret = "GVar_NE"
 	case CheckTileVar:
-		ret = fmt.Sprintf("the TileVar stored at (%d, %d, %d) is %d", t.Args[1], t.Args[2], t.Args[3], t.Args[0])
+		ret = "CheckTileVar"
 	case ExperienceGt:
-		ret = fmt.Sprintf("the Player's XP is greater than %d", t.Args[0])
+		ret = "Wins_GT"
+	}
+	for _, arg := range t.Args {
+		ret += fmt.Sprintf(",%d", arg)
 	}
 	return ret
 }
@@ -445,82 +466,86 @@ func (a *TriggerAction) ToString() string {
 	ret := ""
 	switch a.Action {
 	case SetTile:
-		ret = fmt.Sprintf("Set the tile at (%d, %d, %d) to %d", a.Args[0], a.Args[1], a.Args[2], a.Args[3])
+		ret = "SetTile"
 	case ClearTile:
-		ret = fmt.Sprintf("Clear the tile at (%d, %d, %d)", a.Args[0], a.Args[1], a.Args[2])
+		ret = "ClearTile"
 	case MoveTile:
-		ret = fmt.Sprintf("Move the tile at (%d, %d, %d) to (%d, %d, %d)", a.Args[0], a.Args[1], a.Args[2], a.Args[3], a.Args[4], a.Args[2])
+		ret = "MoveTile"
 	case DrawOverlayTile:
-		ret = fmt.Sprintf("Draw tile_%04d over the top of (%d, %d)", a.Args[2], a.Args[0], a.Args[1])
+		ret = "DrawOver"
 	case PlayerSay:
-		ret = fmt.Sprintf("The player says: \"%s\"", a.Text)
+		ret = "PlyrSez"
 	case CreatureSay:
-		ret = fmt.Sprintf("The creature at (%d, %d) says: \"%s\"", a.Args[0], a.Args[1], a.Text)
+		ret = "CrtrSez"
 	case RedrawTile:
-		ret = fmt.Sprintf("Redraw the tile at (%d, %d)", a.Args[0], a.Args[1])
+		ret = "DrawTile"
 	case RedrawRect:
-		ret = fmt.Sprintf("Redraw all the tiles from (%d, %d) to (%d, %d)", a.Args[0], a.Args[1], a.Args[2], a.Args[3])
+		ret = "DrawRect"
 	case RenderChanges:
-		ret = "Redraw all the things"
+		ret = "DrawAll"
 	case WaitTicks:
-		ret = fmt.Sprintf("Wait for %d ticks", a.Args[0])
+		ret = "WaitFor"
 	case PlaySound:
-		ret = fmt.Sprintf("Play \"%s\"", Sounds[a.Args[0]])
+		ret = "PlaySound"
 	case FadeIn:
-		ret = "Do the \"Screen-Wipe In\" animation"
+		ret = "FadeIn"
 	case RandomNum:
-		ret = fmt.Sprintf("Set RandVar to a random value between 0 and %d", a.Args[0])
+		ret = "RVarRange"
 	case SetTempVar:
-		ret = fmt.Sprintf("Set TempVar to %d", a.Args[0])
+		ret = "SetTVar"
 	case AddTempVar:
-		ret = fmt.Sprintf("Add %d to TempVar", a.Args[0])
+		ret = "AddTVar"
 	case SetTileVar:
-		ret = fmt.Sprintf("Set the TileVar at (%d, %d, %d) to %d", a.Args[0], a.Args[1], a.Args[2], a.Args[3])
+		ret = "SetTileVar"
 	case ReleaseCamera:
-		ret = "Un-anchor the camera from the Player"
+		ret = "FreeCam"
 	case LockCamera:
-		ret = "Anchor the camera to the Player's position"
+		ret = "LockCam"
 	case SetPlayerPos:
-		ret = fmt.Sprintf("Teleport the Player to zone coords (%d, %d)", a.Args[0], a.Args[1])
+		ret = "SetPlyrPos"
 	case MoveCamera:
-		ret = fmt.Sprintf("Pan the camera from (%d, %d) to (%d, %d) over the next %d ticks", a.Args[0], a.Args[1], a.Args[2], a.Args[3], a.Args[4])
+		ret = "MoveCam"
 	case RunOnlyOnce:
-		ret = "Destroy this trigger after it finishes"
+		ret = "RunOnce"
 	case ShowObject:
-		ret = fmt.Sprintf("Show object #%d", a.Args[0])
+		ret = "ShowObj"
 	case HideObject:
-		ret = fmt.Sprintf("Hide object #%d", a.Args[0])
+		ret = "HideObj"
 	case ShowEntity:
-		ret = fmt.Sprintf("Show creature #%d", a.Args[0])
+		ret = "ShowCrtr"
 	case HideEntity:
-		ret = fmt.Sprintf("Hide creature #%d", a.Args[0])
+		ret = "HideCrtr"
 	case ShowAllEntities:
-		ret = "Show all creatures"
+		ret = "ShowAll"
 	case HideAllEntities:
-		ret = "Hide all creatures"
+		ret = "HideAll"
 	case SpawnItem:
-		ret = fmt.Sprintf("Spawn item_%03d at (%d, %d)", a.Args[0], a.Args[1], a.Args[2])
+		ret = "SpawnItem"
 	case GiveToPlayer:
-		ret = fmt.Sprintf("Give item_%03d to the Player", a.Args[0])
+		ret = "GiveItem"
 	case TakeFromPlayer:
-		ret = fmt.Sprintf("Take item_%03d from the Player", a.Args[0])
+		ret = "TakeItem"
 	case OpenOrShow:
-		ret = "Set a bunch of values to 1...?"
+		ret = "OpenOrShow"
 	case Unknown1f:
-		ret = "Unknown (1F)..."
+		ret = "Unkwn1f"
 	case Unknown20:
-		ret = "Unknown (20)... (never used?)"
+		ret = "Unkwn20"
 	case GoToZone:
-		ret = fmt.Sprintf("Take the player to (%d, %d) in Zone %03d", a.Args[1], a.Args[2], a.Args[0])
+		ret = "GoToZone"
 	case SetGlobalVar:
-		ret = fmt.Sprintf("Set GlobalVar to %d", a.Args[0])
+		ret = "SetGVar"
 	case AddGlobalVar:
-		ret = fmt.Sprintf("Add %d to GlobalVar", a.Args[0])
+		ret = "AddGVar"
 	case SetRandVar:
-		ret = fmt.Sprintf("Set RandVar to %d", a.Args[0])
+		ret = "SetRVar"
 	case AddToHealth:
-		ret = fmt.Sprintf("Give the player %d health", a.Args[0])
+		ret = "AddLife"
 	}
+	for _, arg := range a.Args {
+		ret += fmt.Sprintf(",%d", arg)
+	}
+	ret += "," + a.Text
 	return ret
 }
 
@@ -529,39 +554,40 @@ func (hs *ZoneHotspot) ToString() string {
 	ret := ""
 	switch hs.Type {
 	case ZoneEntrance:
-		ret += fmt.Sprintf("Entrance => Zone %03d", hs.Arg)
+		ret += "EnterZone"
 	case ZoneExit:
-		ret += "Exit => previous Zone"
+		ret += "ExitZone"
 	case VehicleToSubarea, VehicleToOverworld:
-		ret += fmt.Sprintf("Vehicle => Zone %03d", hs.Arg)
+		ret += "VehicleSpot"
 	case XWingToDagobah, XWingFromDagobah:
-		ret += fmt.Sprintf("X-Wing => Zone %03d", hs.Arg)
+		ret += "XwingSpot"
 	case TriggerSpot:
-		ret += "Trigger Spot"
+		ret += "TriggerSpot"
 	case SpawnLocation:
-		ret += "Spawn location"
+		ret += "NpcSpawnSpot"
 	case ForceLocation:
-		ret += "Force location"
+		ret += "ForceSpot"
 	case LocatorSpot:
-		ret += "Get a Locator"
+		ret += "GetLocator"
 	case ItemSpot:
-		ret += fmt.Sprintf("Item spot: arg %d", hs.Arg)
+		ret += "ItemSpot"
 	case QuestNPCSpot:
-		ret += "Quest NPC"
+		ret += "QuestNPC"
 	case WeaponSpot:
-		ret += "Weapon spot"
+		ret += "WeaponSpot"
 	case LockSpot:
-		ret += "Lock spot"
+		ret += "LockSpot"
 	case TeleportSpot:
-		ret += fmt.Sprintf("Teleport spot: arg %d", hs.Arg)
+		ret += "TPortSpot"
 	case UNUSED:
-		ret += fmt.Sprintf("Unused... %d", hs.Arg)
+		ret += "UNUSED"
 	case UNKNOWNHOTSPOT:
-		ret += fmt.Sprintf("Unknown... %d", hs.Arg)
+		ret += "UNKNOWN"
 	default:
 		ret += fmt.Sprintf("Unhandled trigger type, arg %d", hs.Arg)
 		log.Fatal("UNHANDLED HOTSPOT TYPE")
 	}
+	ret += fmt.Sprintf(",%d", hs.Arg)
 
 	return ret
 }

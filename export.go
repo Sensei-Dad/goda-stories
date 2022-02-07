@@ -65,17 +65,18 @@ type TiledXMLObjectGroup struct {
 }
 
 type TiledXMLObject struct {
-	XMLName  xml.Name
-	Id       int           `xml:"id,attr"`
-	Name     string        `xml:"name,attr"`
-	Type     int           `xml:"type,attr"`
-	X        int           `xml:"x,attr"`
-	Y        int           `xml:"y,attr"`
-	Width    int           `xml:"width,attr"`
-	Height   int           `xml:"height,attr"`
-	Rotation int           `xml:"rotation,attr"`
-	TileGid  int           `xml:"gid,attr"`
-	Mark     TiledXMLShape `xml:"ellipse"`
+	XMLName    xml.Name
+	Id         int                `xml:"id,attr"`
+	Name       string             `xml:"name,attr"`
+	Type       int                `xml:"type,attr"`
+	X          int                `xml:"x,attr"`
+	Y          int                `xml:"y,attr"`
+	Width      int                `xml:"width,attr"`
+	Height     int                `xml:"height,attr"`
+	Rotation   int                `xml:"rotation,attr"`
+	Properties []TiledXMLProperty `xml:"properties>property"`
+	TileGid    int                `xml:"gid,attr"`
+	Mark       TiledXMLShape      `xml:"ellipse"`
 }
 
 type TiledXMLShape struct {
@@ -127,7 +128,7 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 		TileHeight:      gosoh.TileHeight,
 		Infinite:        0,
 		BackgroundColor: "#000000",
-		NextLayerId:     1,
+		NextLayerId:     9,
 		NextObjectId:    1,
 	}
 
@@ -177,8 +178,13 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 		Name:    "ZoneActors",
 		Objects: make([]TiledXMLObject, 0),
 	}
-	triggers := TiledXMLObjectGroup{
+	rewards := TiledXMLObjectGroup{
 		Id:      7,
+		Name:    "Rewards",
+		Objects: make([]TiledXMLObject, 0),
+	}
+	triggers := TiledXMLObjectGroup{
+		Id:      8,
 		Name:    "ActionTriggers",
 		Objects: make([]TiledXMLObject, 0),
 	}
@@ -211,14 +217,81 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			Width:    gosoh.TileWidth,
 			Height:   gosoh.TileHeight,
 			Rotation: 0,
-			TileGid:  gosoh.Creatures[act.CreatureId].Images[gosoh.Down] + 1,
+			TileGid:  gosoh.GetCreatureTNum(act.CreatureId) + 1,
 		}
 		actors.Objects = append(actors.Objects, actor)
+	}
+	for i, npcId := range zData.QuestNPCs {
+		totalObjs++
+		npc := TiledXMLObject{
+			XMLName:  xml.Name{Local: "object"},
+			Id:       totalObjs,
+			Name:     fmt.Sprintf("NPC %d", i),
+			Type:     npcId,
+			X:        (i * gosoh.TileWidth),
+			Y:        (-1 * gosoh.TileHeight),
+			Width:    gosoh.TileWidth,
+			Height:   gosoh.TileHeight,
+			Rotation: 0,
+			TileGid:  npcId + 1,
+		}
+		npcs.Objects = append(npcs.Objects, npc)
+	}
+	for i, rewardId := range zData.RewardItems {
+		totalObjs++
+		rew := TiledXMLObject{
+			XMLName:  xml.Name{Local: "object"},
+			Id:       totalObjs,
+			Name:     gosoh.GetItemName(rewardId),
+			Type:     rewardId,
+			X:        (i * gosoh.TileWidth),
+			Y:        (-3 * gosoh.TileHeight),
+			Width:    gosoh.TileWidth,
+			Height:   gosoh.TileHeight,
+			Rotation: 0,
+			TileGid:  rewardId + 1,
+		}
+		rewards.Objects = append(rewards.Objects, rew)
+	}
+	for i, actTrg := range zData.ActionTriggers {
+		totalObjs++
+		trgr := TiledXMLObject{
+			XMLName:    xml.Name{Local: "object"},
+			Id:         totalObjs,
+			Name:       fmt.Sprintf("Trg_%d", i),
+			Type:       i,
+			X:          (i * gosoh.TileWidth),
+			Y:          ((zData.Height + 1) * gosoh.TileHeight),
+			Width:      gosoh.TileWidth,
+			Height:     gosoh.TileHeight,
+			Rotation:   0,
+			Properties: make([]TiledXMLProperty, 0),
+		}
+
+		// Express conditions and actions as properties
+		for j, c := range actTrg.Conditions {
+			prop := TiledXMLProperty{
+				XMLName: xml.Name{Local: "property"},
+				Name:    fmt.Sprintf("IF_%03d", j),
+				Value:   c.ToString(),
+			}
+			trgr.Properties = append(trgr.Properties, prop)
+		}
+		for j, a := range actTrg.Actions {
+			prop := TiledXMLProperty{
+				XMLName: xml.Name{Local: "property"},
+				Name:    fmt.Sprintf("THEN_%03d", j),
+				Value:   a.ToString(),
+			}
+			trgr.Properties = append(trgr.Properties, prop)
+		}
+		triggers.Objects = append(triggers.Objects, trgr)
 	}
 
 	zoneXML.Objects = append(zoneXML.Objects, hotspots)
 	zoneXML.Objects = append(zoneXML.Objects, npcs)
 	zoneXML.Objects = append(zoneXML.Objects, actors)
+	zoneXML.Objects = append(zoneXML.Objects, rewards)
 	zoneXML.Objects = append(zoneXML.Objects, triggers)
 
 	// TODO:

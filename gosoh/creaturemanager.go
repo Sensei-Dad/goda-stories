@@ -34,3 +34,19 @@ func AddCreature(cInfo CreatureInfo, x, y int) *ecs.Entity {
 			IsBlocking: true,
 		})
 }
+
+func GetCreatureTNum(crtrId int) (tNum int) {
+	if crtrId != Clamp(crtrId, 0, len(Creatures)-1) {
+		return 1680
+	}
+
+	if Creatures[crtrId].Images[Down] != 65535 {
+		return Creatures[crtrId].Images[Down]
+	} else if Creatures[crtrId].Images[DownLeft] != 65535 {
+		return Creatures[crtrId].Images[DownLeft]
+	} else if Creatures[crtrId].Images[DownRight] != 65535 {
+		return Creatures[crtrId].Images[DownRight]
+	}
+
+	return 1680
+}
