@@ -525,7 +525,8 @@ func (a *TriggerAction) ToString() string {
 }
 
 func (hs *ZoneHotspot) ToString() string {
-	ret := fmt.Sprintf("%02d (%d, %d) ", hs.Id, hs.X, hs.Y)
+	// ret := fmt.Sprintf("%02d (%d, %d) ", hs.Id, hs.X, hs.Y)
+	ret := ""
 	switch hs.Type {
 	case ZoneEntrance:
 		ret += fmt.Sprintf("Entrance => Zone %03d", hs.Arg)

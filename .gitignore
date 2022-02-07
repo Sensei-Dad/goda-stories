@@ -6,7 +6,7 @@ assets/text/*.txt
 assets/text/*.html
 assets/test
 assets/test/*
-assets/*.tsx
+assets/*_manual.tsx
 assets/yodatiles.png
 
 data/YODESK.DTA

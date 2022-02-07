@@ -389,8 +389,7 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 
 	offset := (6 * z.Width * z.Height) + 22
 
-	// Parse entries for tile-based triggers
-
+	// Parse entries for hotspots
 	numTriggers := int(binary.LittleEndian.Uint16(zData[offset:]))
 	if numTriggers > 0 {
 		z.Hotspots = make([]gosoh.ZoneHotspot, numTriggers)
