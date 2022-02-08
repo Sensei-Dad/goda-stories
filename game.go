@@ -1,16 +1,21 @@
 package main
 
 import (
+	"fmt"
+	"image/color"
+	"log"
 	"math"
 
-	"github.com/MasterShizzle/goda-stories/ebizetsu"
 	"github.com/MasterShizzle/goda-stories/gosoh"
+	"github.com/blizzy78/ebitenui"
+	"github.com/blizzy78/ebitenui/image"
+	"github.com/blizzy78/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type Game struct {
 	World *GameWorld
-	Gui   *ebizetsu.BitmapInterface
+	Gui   *ebitenui.UI
 	View  ViewCoords
 	tick  int64
 }
@@ -18,11 +23,57 @@ type Game struct {
 func NewGame(tileset *ebiten.Image, tileInfo []gosoh.TileInfo, zoneInfo []gosoh.ZoneInfo, itemInfo []gosoh.ItemInfo, puzzleInfo []gosoh.PuzzleInfo, creatureInfo []gosoh.CreatureInfo, soundList []string) *Game {
 	// TODO: Distinguish between "init game" and "new game"
 	g := &Game{}
-	g.Gui = ebizetsu.NewBitmapInterface("assets/font_16x20.png", 16, 20)
+
+	// Build UI elements
+	buttonImg, err := loadButtonImage()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	guiFont, err := loadFont(GuiFontFile, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer guiFont.Close()
+
+	// Root UI container
+	gameContainer := widget.NewContainer(
+		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.RGBA{0, 0, 0, 0})),
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+	)
+
+	// Make a BUTTON!
+	button := widget.NewButton(
+		widget.ButtonOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
+				HorizontalPosition: widget.AnchorLayoutPositionEnd,
+				VerticalPosition:   widget.AnchorLayoutPositionCenter,
+			}),
+		),
+		widget.ButtonOpts.Image(buttonImg),
+		widget.ButtonOpts.Text("This button does nothing!", guiFont, &widget.ButtonTextColor{
+			Idle: color.RGBA{0xdf, 0xf4, 0xff, 0xff},
+		}),
+		widget.ButtonOpts.TextPadding(widget.Insets{
+			Left:  10,
+			Right: 10,
+		}),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			fmt.Println("Button clicked")
+		}),
+	)
+
+	gameContainer.AddChild(button)
+
+	ui := ebitenui.UI{
+		Container: gameContainer,
+	}
+
+	g.Gui = &ui
 
 	// Viewport is 12:10 ratio
-	vHeight := float64(ebizetsu.WindowHeight - (2 * ebizetsu.ElementBuffer))
-	vWidth := math.Round(vHeight * ebizetsu.ViewAspectRatio)
+	vHeight := float64(WindowHeight - (2 * ElementBuffer))
+	vWidth := math.Round(vHeight * ViewAspectRatio)
 
 	g.View = ViewCoords{
 		X:      0.0,
@@ -53,6 +104,7 @@ var currentArea *gosoh.MapArea
 
 func (g *Game) Update() error {
 	// g.tick++
+	g.Gui.Update()
 	gosoh.ProcessInput()
 	// TODO: Handle AI, randomly move critters around, etc.
 	// ProcessCreatures(g)
@@ -64,27 +116,23 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.Gui.Draw(screen)
 	// Draw the Viewport
-	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
+	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 	// TODO: Walls and Renderables need to be interleaved and drawn at the same time
-	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
-	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
-	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ebizetsu.ElementBuffer))
-
-	// splash := g.Gui.GetText("Hello, World!!", color.RGBA{R: 0xFF, G: 0xFF, B: 0x00, A: 1}, 10)
-	// op := &ebiten.DrawImageOptions{}
-	// op.GeoM.Translate(10, 10)
-	// screen.DrawImage(splash, op)
+	currentArea.DrawLayer(gosoh.WallsLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
+	gosoh.ProcessRenderables(screen, g.View.X, g.View.Y, float64(ElementBuffer))
+	currentArea.DrawLayer(gosoh.OverlayLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
-	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ebizetsu.ElementBuffer))
+	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ElementBuffer))
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
 	// 640x360 internal dimensions, by default
 	// 16:9 aspect ratio, with plenty of scaling
-	return ebizetsu.WindowWidth, ebizetsu.WindowHeight
+	return WindowWidth, WindowHeight
 }
 
 func (g *Game) CenterViewport(a *gosoh.MapArea) {

@@ -128,7 +128,7 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 		TileHeight:      gosoh.TileHeight,
 		Infinite:        0,
 		BackgroundColor: "#000000",
-		NextLayerId:     9,
+		NextLayerId:     1,
 		NextObjectId:    1,
 	}
 
@@ -159,7 +159,6 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 	}
 	zoneXML.Properties = append(zoneXML.Properties, zProp)
 
-	totalObjs := 0
 	zoneXML.Objects = make([]TiledXMLObjectGroup, 0)
 
 	// Hotspots
@@ -168,32 +167,36 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 		Name:    "Hotspots",
 		Objects: make([]TiledXMLObject, 0),
 	}
+	zoneXML.NextLayerId++
 	npcs := TiledXMLObjectGroup{
 		Id:      5,
 		Name:    "QuestNPCs",
 		Objects: make([]TiledXMLObject, 0),
 	}
+	zoneXML.NextLayerId++
 	actors := TiledXMLObjectGroup{
 		Id:      6,
 		Name:    "ZoneActors",
 		Objects: make([]TiledXMLObject, 0),
 	}
+	zoneXML.NextLayerId++
 	rewards := TiledXMLObjectGroup{
 		Id:      7,
 		Name:    "Rewards",
 		Objects: make([]TiledXMLObject, 0),
 	}
+	zoneXML.NextLayerId++
 	triggers := TiledXMLObjectGroup{
 		Id:      8,
 		Name:    "ActionTriggers",
 		Objects: make([]TiledXMLObject, 0),
 	}
+	zoneXML.NextLayerId++
 
 	for _, hs := range zData.Hotspots {
-		totalObjs++
 		spot := TiledXMLObject{
 			XMLName:  xml.Name{Local: "object"},
-			Id:       totalObjs,
+			Id:       zoneXML.NextObjectId,
 			Name:     hs.ToString(),
 			Type:     int(hs.Type),
 			X:        (hs.X * gosoh.TileWidth) + 2,
@@ -203,13 +206,13 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			Rotation: 0,
 		}
 		hotspots.Objects = append(hotspots.Objects, spot)
+		zoneXML.NextObjectId++
 	}
 	for _, act := range zData.ZoneActors {
-		totalObjs++
 		crtr := gosoh.Creatures[act.CreatureId]
 		actor := TiledXMLObject{
 			XMLName:  xml.Name{Local: "object"},
-			Id:       totalObjs,
+			Id:       zoneXML.NextObjectId,
 			Name:     crtr.Name,
 			Type:     act.CreatureId,
 			X:        (act.ZoneX * gosoh.TileWidth),
@@ -220,12 +223,12 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			TileGid:  gosoh.GetCreatureTNum(act.CreatureId) + 1,
 		}
 		actors.Objects = append(actors.Objects, actor)
+		zoneXML.NextObjectId++
 	}
 	for i, npcId := range zData.QuestNPCs {
-		totalObjs++
 		npc := TiledXMLObject{
 			XMLName:  xml.Name{Local: "object"},
-			Id:       totalObjs,
+			Id:       zoneXML.NextObjectId,
 			Name:     fmt.Sprintf("NPC %d", i),
 			Type:     npcId,
 			X:        (i * gosoh.TileWidth),
@@ -236,12 +239,12 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			TileGid:  npcId + 1,
 		}
 		npcs.Objects = append(npcs.Objects, npc)
+		zoneXML.NextObjectId++
 	}
 	for i, rewardId := range zData.RewardItems {
-		totalObjs++
 		rew := TiledXMLObject{
 			XMLName:  xml.Name{Local: "object"},
-			Id:       totalObjs,
+			Id:       zoneXML.NextObjectId,
 			Name:     gosoh.GetItemName(rewardId),
 			Type:     rewardId,
 			X:        (i * gosoh.TileWidth),
@@ -252,12 +255,12 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			TileGid:  rewardId + 1,
 		}
 		rewards.Objects = append(rewards.Objects, rew)
+		zoneXML.NextObjectId++
 	}
 	for i, actTrg := range zData.ActionTriggers {
-		totalObjs++
 		trgr := TiledXMLObject{
 			XMLName:    xml.Name{Local: "object"},
-			Id:         totalObjs,
+			Id:         zoneXML.NextObjectId,
 			Name:       fmt.Sprintf("Trg_%d", i),
 			Type:       i,
 			X:          (i * gosoh.TileWidth),
@@ -286,6 +289,7 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 			trgr.Properties = append(trgr.Properties, prop)
 		}
 		triggers.Objects = append(triggers.Objects, trgr)
+		zoneXML.NextObjectId++
 	}
 
 	zoneXML.Objects = append(zoneXML.Objects, hotspots)
@@ -293,10 +297,6 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 	zoneXML.Objects = append(zoneXML.Objects, actors)
 	zoneXML.Objects = append(zoneXML.Objects, rewards)
 	zoneXML.Objects = append(zoneXML.Objects, triggers)
-
-	// TODO:
-	// - Action Triggers
-	// - Quest NPCs
 
 	zoneXML.Layers = make([]TiledXMLMapLayer, 0)
 
@@ -345,6 +345,7 @@ func saveZoneToTiledMap(filepath string, zData gosoh.ZoneInfo) {
 	zoneXML.Layers = append(zoneXML.Layers, terrainLayer)
 	zoneXML.Layers = append(zoneXML.Layers, wallsLayer)
 	zoneXML.Layers = append(zoneXML.Layers, overlayLayer)
+	zoneXML.NextLayerId += 3
 
 	err := saveXMLToFile(filepath, zoneXML)
 	if err != nil {
