@@ -1,15 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"image/color"
-	"log"
 	"math"
 
 	"github.com/MasterShizzle/goda-stories/gosoh"
 	"github.com/blizzy78/ebitenui"
-	"github.com/blizzy78/ebitenui/image"
-	"github.com/blizzy78/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -24,52 +19,7 @@ func NewGame(tileset *ebiten.Image, tileInfo []gosoh.TileInfo, zoneInfo []gosoh.
 	// TODO: Distinguish between "init game" and "new game"
 	g := &Game{}
 
-	// Build UI elements
-	buttonImg, err := loadButtonImage()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	guiFont, err := loadFont(GuiFontFile, 32)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer guiFont.Close()
-
-	// Root UI container
-	gameContainer := widget.NewContainer(
-		widget.ContainerOpts.BackgroundImage(image.NewNineSliceColor(color.RGBA{0, 0, 0, 0})),
-		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
-	)
-
-	// Make a BUTTON!
-	button := widget.NewButton(
-		widget.ButtonOpts.WidgetOpts(
-			widget.WidgetOpts.LayoutData(widget.AnchorLayoutData{
-				HorizontalPosition: widget.AnchorLayoutPositionEnd,
-				VerticalPosition:   widget.AnchorLayoutPositionCenter,
-			}),
-		),
-		widget.ButtonOpts.Image(buttonImg),
-		widget.ButtonOpts.Text("This button does nothing!", guiFont, &widget.ButtonTextColor{
-			Idle: color.RGBA{0xdf, 0xf4, 0xff, 0xff},
-		}),
-		widget.ButtonOpts.TextPadding(widget.Insets{
-			Left:  10,
-			Right: 10,
-		}),
-		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
-			fmt.Println("Button clicked")
-		}),
-	)
-
-	gameContainer.AddChild(button)
-
-	ui := ebitenui.UI{
-		Container: gameContainer,
-	}
-
-	g.Gui = &ui
+	g.Gui = buildGui()
 
 	// Viewport is 12:10 ratio
 	vHeight := float64(WindowHeight - (2 * ElementBuffer))
@@ -116,7 +66,6 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.Gui.Draw(screen)
 	// Draw the Viewport
 	currentArea.DrawLayer(gosoh.TerrainLayer, screen, g.View.X, g.View.Y, g.View.Width, g.View.Height, float64(ElementBuffer))
 	// TODO: Walls and Renderables need to be interleaved and drawn at the same time
@@ -127,6 +76,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Show player stuff
 	gosoh.ShowDebugInfo(screen, g.View.X, g.View.Y)
 	gosoh.DrawEntityBoxes(screen, g.View.X, g.View.Y, float64(ElementBuffer))
+
+	g.Gui.Draw(screen)
 }
 
 func (g *Game) Layout(w, h int) (int, int) {
