@@ -298,7 +298,7 @@ func processZoneData(zData []byte, tiles []gosoh.TileInfo) gosoh.ZoneInfo {
 	zoneHeader := string(zData[2:6])
 	z.Id = int(binary.LittleEndian.Uint16(zData[0:]))
 	if zoneHeader != "IZON" {
-		log.Fatal(fmt.Sprintf("IZON header not found: cannot parse zoneData for zoneId %s", fmt.Sprint(z.Id)))
+		log.Fatalf("IZON header not found: cannot parse zoneData for zoneId %s", fmt.Sprint(z.Id))
 	}
 
 	// fmt.Printf("    Processing map_%03d: ", z.Id)
@@ -573,7 +573,7 @@ func processPuzzleData(pData []byte, numTiles int) (ret []gosoh.PuzzleInfo) {
 			p.ItemType = "PlotItem"
 		default:
 			p.ItemType = "UNKNOWN"
-			log.Fatal(fmt.Sprintf("Found unknown puzzle type: %d", puzBytes[6]))
+			log.Fatalf("Found unknown puzzle type: %d", puzBytes[6])
 		}
 
 		p.NeedText, p.DoneText, p.HaveText = slurpPuzzleText(puzBytes)

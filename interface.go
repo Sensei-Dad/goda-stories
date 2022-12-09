@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"image/color"
 	_ "image/png"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/blizzy78/ebitenui"
 	"github.com/blizzy78/ebitenui/image"
@@ -106,7 +106,7 @@ func loadNineSlice(path string, w [3]int, h [3]int) (*image.NineSlice, error) {
 }
 
 func loadFont(path string, size float64) (font.Face, error) {
-	fontData, err := ioutil.ReadFile(path)
+	fontData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -10,11 +10,12 @@ import (
 const yodaFile = "YODESK.DTA"
 
 func main() {
-	// Process the input file, grab tiles and maps
 	// TODO:
-	//  - some more tweaking to not repeat this step too many times
+	//  - Figure out how to grab YODESK.dta and sounds and junk
+	//      via extracting from the ISO directly
+	//  	- Make an Installer
 	//  - action scripts
-	//  - worldgen rules?
+	//  - worldgen rules
 	var tileset *ebiten.Image
 	var tileInfo []gosoh.TileInfo
 	var zoneInfo []gosoh.ZoneInfo
@@ -25,10 +26,11 @@ func main() {
 
 	tileset, tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList = processYodaFile(yodaFile)
 
-	// Init the game...
+	// Init the game
 	g := NewGame(tileset, tileInfo, zoneInfo, itemInfo, puzzleInfo, creatureInfo, soundList)
 
-	// create various output files
+	// Create various output files
+	// TODO: This should probably be in the installer, or optional
 	if true {
 		saveTiledMaps(g)
 	}
@@ -37,7 +39,7 @@ func main() {
 	ebiten.SetWindowTitle("Goda Stories")
 	ebiten.MaximizeWindow()
 
-	// ...and run it
+	// Run it!
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
